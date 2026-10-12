@@ -1,0 +1,108 @@
+<Window x:Class="LSearch.SetupWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="LSearch Setup">
+  <Window.SystemBackdrop>
+    <DesktopAcrylicBackdrop />
+  </Window.SystemBackdrop>
+
+  <Grid Padding="36,44,36,24">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <StackPanel Orientation="Horizontal" Spacing="10">
+      <FontIcon Glyph="&#xE721;" FontSize="16" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+      <TextBlock x:Name="StepText" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+    </StackPanel>
+
+    <Grid Grid.Row="1" Margin="0,18,0,18">
+      <!-- 0: Welcome -->
+      <StackPanel x:Name="PageWelcome" Spacing="12">
+        <TextBlock Text="Welcome to LSearch" Style="{StaticResource TitleTextBlockStyle}" />
+        <TextBlock TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                   Text="LSearch searches apps, files, and the contents of your documents by meaning, right from a hotkey. Let's choose what it should look through. You can rerun this setup from the tray icon at any time." />
+        <TextBlock x:Name="HotkeyText" Margin="0,12,0,0" FontSize="13" />
+      </StackPanel>
+
+      <!-- 1: Folders -->
+      <Grid x:Name="PageFolders" Visibility="Collapsed" RowSpacing="12">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <TextBlock Text="Searched folders" Style="{StaticResource SubtitleTextBlockStyle}" />
+        <TextBlock Grid.Row="1" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                   Text="The contents of documents in these folders are indexed for semantic search." />
+        <ListView x:Name="FolderList" Grid.Row="2" SelectionMode="Single" BorderThickness="1"
+                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" CornerRadius="6"
+                  Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+          <ListView.ItemTemplate>
+            <DataTemplate x:DataType="x:String">
+              <StackPanel Orientation="Horizontal" Spacing="10" Padding="0,6">
+                <FontIcon Glyph="&#xE8B7;" FontSize="16" />
+                <TextBlock Text="{x:Bind}" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+            </DataTemplate>
+          </ListView.ItemTemplate>
+        </ListView>
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8">
+          <Button Click="AddFolder_Click">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <FontIcon Glyph="&#xE710;" FontSize="12" /><TextBlock Text="Add folder" />
+            </StackPanel>
+          </Button>
+          <Button Click="RemoveFolder_Click">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <FontIcon Glyph="&#xE738;" FontSize="12" /><TextBlock Text="Remove" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+        <ToggleSwitch x:Name="AllDrivesToggle" Grid.Row="4"
+                      Header="Also find files by name anywhere on all drives" />
+      </Grid>
+
+      <!-- 2: Browser history -->
+      <StackPanel x:Name="PageHistory" Visibility="Collapsed" Spacing="12">
+        <TextBlock Text="Browser history" Style="{StaticResource SubtitleTextBlockStyle}" />
+        <TextBlock TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                   Text="Show matching pages from Chrome, Edge, Brave, Vivaldi, Opera, and Firefox below your local results. History is read on this PC only and never stored by LSearch." />
+        <ToggleSwitch x:Name="HistoryToggle" OnContent="Include browser history" OffContent="Don't include browser history" />
+      </StackPanel>
+
+      <!-- 3: LLA (only on 16 GB+ machines) -->
+      <StackPanel x:Name="PageLla" Visibility="Collapsed" Spacing="12">
+        <TextBlock Text="LLA" Style="{StaticResource SubtitleTextBlockStyle}" />
+        <TextBlock TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                   Text="LLA is a local mixture-of-experts model that fixes files for you: type “fix app.py it crashes on start” and press Tab. Everything runs on this PC." />
+        <ToggleSwitch x:Name="LlaToggle" OnContent="Use LLA" OffContent="Don't use LLA" Toggled="LlaToggle_Toggled" />
+        <StackPanel x:Name="LlaDownload" Spacing="6" Visibility="Collapsed">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <Button x:Name="LlaDownloadButton" Content="Download LLA (4.1 GB)" Click="LlaDownload_Click" />
+            <TextBlock x:Name="LlaDownloadText" VerticalAlignment="Center" FontSize="12"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+          </StackPanel>
+          <ProgressBar x:Name="LlaProgress" Maximum="1" Visibility="Collapsed" />
+        </StackPanel>
+        <TextBlock x:Name="RamText" FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+      </StackPanel>
+
+      <!-- 4: Done -->
+      <StackPanel x:Name="PageDone" Visibility="Collapsed" Spacing="12">
+        <TextBlock Text="You're all set" Style="{StaticResource TitleTextBlockStyle}" />
+        <TextBlock x:Name="SummaryText" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+      </StackPanel>
+    </Grid>
+
+    <Grid Grid.Row="2">
+      <Button x:Name="BackButton" Content="Back" Click="Back_Click" />
+      <Button x:Name="NextButton" Content="Next" HorizontalAlignment="Right" MinWidth="110"
+              Style="{StaticResource AccentButtonStyle}" Click="Next_Click" />
+    </Grid>
+  </Grid>
+</Window>

@@ -1,0 +1,11 @@
+bin/
+obj/
+dist/
+build/
+__pycache__/
+*.pyc
+*.spec
+.vs/
+*.user
+*.gguf
+*.lsearch.bak

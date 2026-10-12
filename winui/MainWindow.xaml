@@ -1,0 +1,134 @@
+<Window x:Class="LSearch.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:LSearch"
+        Title="LSearch">
+  <Window.SystemBackdrop>
+    <DesktopAcrylicBackdrop />
+  </Window.SystemBackdrop>
+
+  <Grid x:Name="Root">
+    <Grid.Resources>
+      <DataTemplate x:Key="HeaderTemplate" x:DataType="local:ResultItem">
+        <TextBlock Text="{x:Bind Title}" Margin="2,10,0,2" FontSize="11" FontWeight="SemiBold"
+                   Foreground="{ThemeResource TextFillColorTertiaryBrush}" CharacterSpacing="40" />
+      </DataTemplate>
+      <DataTemplate x:Key="RowTemplate" x:DataType="local:ResultItem">
+        <Grid ColumnSpacing="12" Padding="0,5">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="28" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <FontIcon Glyph="{x:Bind Glyph}" FontSize="20" Foreground="{x:Bind GlyphBrush}" />
+          <Image Source="{x:Bind Icon, Mode=OneWay}" Width="28" Height="28" />
+          <StackPanel Grid.Column="1" VerticalAlignment="Center">
+            <TextBlock Text="{x:Bind Title}" FontSize="13" TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{x:Bind Subtitle}" FontSize="11" TextTrimming="CharacterEllipsis"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       Visibility="{x:Bind HasSubtitle}" />
+          </StackPanel>
+        </Grid>
+      </DataTemplate>
+      <local:ResultTemplateSelector x:Key="Selector"
+                                    Header="{StaticResource HeaderTemplate}"
+                                    Row="{StaticResource RowTemplate}" />
+    </Grid.Resources>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="60" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <!-- Search bar -->
+    <Grid Padding="20,0,20,0" ColumnSpacing="14">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+      <FontIcon Glyph="&#xE721;" FontSize="20" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+      <TextBox x:Name="Query" Grid.Column="1" PlaceholderText="Spotlight Search" FontSize="24"
+               FontWeight="Light" VerticalAlignment="Center" BorderThickness="0" Padding="0"
+               Background="Transparent" TextChanged="Query_TextChanged" PreviewKeyDown="Query_PreviewKeyDown">
+        <TextBox.Resources>
+          <SolidColorBrush x:Key="TextControlBackground" Color="Transparent" />
+          <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent" />
+          <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent" />
+          <SolidColorBrush x:Key="TextControlBorderBrush" Color="Transparent" />
+          <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="Transparent" />
+          <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="Transparent" />
+          <Thickness x:Key="TextControlBorderThemeThicknessFocused">0</Thickness>
+          <Thickness x:Key="TextControlThemePadding">0</Thickness>
+        </TextBox.Resources>
+      </TextBox>
+    </Grid>
+
+    <!-- Results + preview -->
+    <Grid x:Name="Body" Grid.Row="1" Visibility="Collapsed">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="1" />
+        <RowDefinition Height="*" />
+        <RowDefinition Height="1" />
+        <RowDefinition Height="30" />
+      </Grid.RowDefinitions>
+      <Rectangle Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+      <Grid Grid.Row="1">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="300" />
+          <ColumnDefinition Width="1" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <ListView x:Name="Results" Padding="0,2,0,6" SelectionMode="Single" IsTabStop="False"
+                  ItemTemplateSelector="{StaticResource Selector}"
+                  SelectionChanged="Results_SelectionChanged" DoubleTapped="Results_DoubleTapped"
+                  ContainerContentChanging="Results_ContainerContentChanging" />
+        <Rectangle Grid.Column="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+        <!-- File preview -->
+        <Grid x:Name="Preview" Grid.Column="2" Padding="24,26,24,14">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+          <StackPanel Spacing="6" HorizontalAlignment="Stretch">
+            <Grid Height="80" HorizontalAlignment="Center">
+              <FontIcon x:Name="PvGlyph" FontSize="56" />
+              <Image x:Name="PvIcon" Width="80" Height="80" />
+            </Grid>
+            <TextBlock x:Name="PvName" FontSize="17" FontWeight="SemiBold" TextAlignment="Center"
+                       TextWrapping="Wrap" HorizontalAlignment="Center" />
+            <TextBlock x:Name="PvKind" FontSize="12" HorizontalAlignment="Center"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+          </StackPanel>
+          <TextBlock x:Name="PvSnippet" Grid.Row="1" Margin="0,16,0,0" FontSize="12" TextWrapping="Wrap"
+                     TextTrimming="WordEllipsis" />
+          <StackPanel Grid.Row="2" Spacing="8">
+            <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+            <TextBlock x:Name="PvMeta" FontSize="11" TextWrapping="Wrap"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+          </StackPanel>
+        </Grid>
+
+        <!-- LLM answer -->
+        <ScrollViewer x:Name="AiView" Grid.Column="2" Visibility="Collapsed" Padding="22,18">
+          <StackPanel Spacing="10">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <FontIcon Glyph="&#xE945;" FontSize="16" Foreground="#BF5AF2" />
+              <TextBlock x:Name="AiTitle" FontSize="12" FontWeight="SemiBold"
+                         Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            </StackPanel>
+            <TextBlock x:Name="AiText" FontSize="14" TextWrapping="Wrap" IsTextSelectionEnabled="True"
+                       LineHeight="22" />
+          </StackPanel>
+        </ScrollViewer>
+      </Grid>
+      <Rectangle Grid.Row="2" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+      <Grid Grid.Row="3" Padding="16,0">
+        <TextBlock x:Name="StatusText" FontSize="11" VerticalAlignment="Center"
+                   Foreground="{ThemeResource TextFillColorTertiaryBrush}" TextTrimming="CharacterEllipsis"
+                   MaxWidth="380" HorizontalAlignment="Left" />
+        <TextBlock x:Name="HintsText" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Right"
+                   Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+      </Grid>
+    </Grid>
+  </Grid>
+</Window>
