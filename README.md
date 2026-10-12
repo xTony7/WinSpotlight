@@ -71,3 +71,7 @@ powershell -File packaging\build.ps1     # -> dist\LSearch\ and dist\LSearch-Set
 For development, `cd winui && dotnet build -c Release` and run `LSearch.exe` from `bin\`. It
 starts the Python backend (`pythonw -m lsearch.server`, localhost:52123) from source. Debug flags:
 `--show`, `--pin`, `--query <text>`, `--setup`.
+
+## License
+
+Apache License 2.0 — see [LICENSE](LICENSE).

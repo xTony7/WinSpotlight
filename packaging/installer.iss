@@ -1,4 +1,4 @@
-; Inno Setup script: per-user install (no admin prompt), Start menu entry, optional start with Windows.
+﻿; Inno Setup script: per-user install (no admin prompt), Start menu entry, optional start with Windows.
 #define AppVersion "1.0.0"
 
 [Setup]
@@ -16,6 +16,7 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 UninstallDisplayIcon={app}\LSearch.exe
 DisableProgramGroupPage=yes
+LicenseFile=..\LICENSE
 
 [Files]
 Source: "..\dist\LSearch\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
