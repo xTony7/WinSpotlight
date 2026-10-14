@@ -12,6 +12,17 @@ HOME = str(Path.home())
 DEFAULTS = {
     # Global hotkey. Modifiers: alt, ctrl, shift, win. Key: any single key name or "space".
     "hotkey": "alt+space",
+    # Look of the WinUI window; edited live from its Appearance panel (gear button / Ctrl+,).
+    "appearance": {
+        "theme": "system",  # system | light | dark
+        "accent": "blue",  # blue, purple, pink, red, orange, yellow, green, graphite
+        "blur": 60,  # 0-100
+        "transparency": 45,  # 0-100
+        "vibrancy": 40,  # 0-100
+        "glass_edge": True,
+        "shadow": True,
+        "preview": True,
+    },
     # Set by the setup wizard once it has run.
     "setup_complete": False,
     "browser_history": True,

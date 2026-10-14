@@ -4,27 +4,32 @@
         xmlns:local="using:LSearch"
         Title="LSearch">
   <Window.SystemBackdrop>
-    <DesktopAcrylicBackdrop />
+    <local:TransparentBackdrop />
   </Window.SystemBackdrop>
 
-  <Grid x:Name="Root">
+  <!-- The window is transparent; Glass is the visible glass. The margin around it holds the shadow. -->
+  <Grid x:Name="Root" Background="Transparent" PointerPressed="Root_PointerPressed" KeyDown="Root_KeyDown">
     <Grid.Resources>
+      <FontFamily x:Key="UiFont">SF Pro Text, Segoe UI Variable Text, Segoe UI</FontFamily>
+      <FontFamily x:Key="DisplayFont">SF Pro Display, Segoe UI Variable Display, Segoe UI</FontFamily>
+      <Style TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+      </Style>
+
       <DataTemplate x:Key="HeaderTemplate" x:DataType="local:ResultItem">
-        <TextBlock Text="{x:Bind Title}" Margin="2,10,0,2" FontSize="11" FontWeight="SemiBold"
-                   Foreground="{ThemeResource TextFillColorTertiaryBrush}" CharacterSpacing="40" />
+        <TextBlock Text="{x:Bind Title}" Margin="12,12,0,3" FontSize="11" FontWeight="SemiBold" Opacity="0.5" />
       </DataTemplate>
       <DataTemplate x:Key="RowTemplate" x:DataType="local:ResultItem">
-        <Grid ColumnSpacing="12" Padding="0,5">
+        <Grid ColumnSpacing="10" Padding="0,4">
           <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="28" />
+            <ColumnDefinition Width="30" />
             <ColumnDefinition Width="*" />
           </Grid.ColumnDefinitions>
           <FontIcon Glyph="{x:Bind Glyph}" FontSize="20" Foreground="{x:Bind GlyphBrush}" />
-          <Image Source="{x:Bind Icon, Mode=OneWay}" Width="28" Height="28" />
+          <Image Source="{x:Bind Icon, Mode=OneWay}" Width="30" Height="30" />
           <StackPanel Grid.Column="1" VerticalAlignment="Center">
             <TextBlock Text="{x:Bind Title}" FontSize="13" TextTrimming="CharacterEllipsis" />
-            <TextBlock Text="{x:Bind Subtitle}" FontSize="11" TextTrimming="CharacterEllipsis"
-                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+            <TextBlock Text="{x:Bind Subtitle}" FontSize="11" TextTrimming="CharacterEllipsis" Opacity="0.62"
                        Visibility="{x:Bind HasSubtitle}" />
           </StackPanel>
         </Grid>
@@ -32,103 +37,253 @@
       <local:ResultTemplateSelector x:Key="Selector"
                                     Header="{StaticResource HeaderTemplate}"
                                     Row="{StaticResource RowTemplate}" />
+
+      <Style x:Key="CardStyle" TargetType="Border">
+        <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorSecondaryBrush}" />
+        <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Padding" Value="14,2" />
+      </Style>
+      <Style x:Key="RowLabel" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+      </Style>
+      <Style x:Key="RowValue" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Opacity" Value="0.55" />
+        <Setter Property="Width" Value="36" />
+        <Setter Property="TextAlignment" Value="Right" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+      </Style>
+      <Style x:Key="RowDivider" TargetType="Rectangle">
+        <Setter Property="Height" Value="1" />
+        <Setter Property="Fill" Value="{ThemeResource DividerStrokeColorDefaultBrush}" />
+      </Style>
+      <Style x:Key="GlassSlider" TargetType="Slider">
+        <Setter Property="Width" Value="190" />
+        <Setter Property="Minimum" Value="0" />
+        <Setter Property="Maximum" Value="100" />
+        <Setter Property="StepFrequency" Value="1" />
+        <Setter Property="IsThumbToolTipEnabled" Value="False" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+      </Style>
+      <Style x:Key="Switch" TargetType="ToggleSwitch">
+        <Setter Property="OnContent" Value="" />
+        <Setter Property="OffContent" Value="" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="Width" Value="44" />
+        <Setter Property="Margin" Value="0,0,-4,0" />
+        <Setter Property="HorizontalAlignment" Value="Right" />
+      </Style>
+      <Style x:Key="Segment" TargetType="Button">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="0,3" />
+        <Setter Property="MinWidth" Value="64" />
+        <Setter Property="FontSize" Value="12" />
+      </Style>
     </Grid.Resources>
-    <Grid.RowDefinitions>
-      <RowDefinition Height="60" />
-      <RowDefinition Height="*" />
-    </Grid.RowDefinitions>
 
-    <!-- Search bar -->
-    <Grid Padding="20,0,20,0" ColumnSpacing="14">
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="*" />
-      </Grid.ColumnDefinitions>
-      <FontIcon Glyph="&#xE721;" FontSize="20" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-      <TextBox x:Name="Query" Grid.Column="1" PlaceholderText="Spotlight Search" FontSize="24"
-               FontWeight="Light" VerticalAlignment="Center" BorderThickness="0" Padding="0"
-               Background="Transparent" TextChanged="Query_TextChanged" PreviewKeyDown="Query_PreviewKeyDown">
-        <TextBox.Resources>
-          <SolidColorBrush x:Key="TextControlBackground" Color="Transparent" />
-          <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent" />
-          <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent" />
-          <SolidColorBrush x:Key="TextControlBorderBrush" Color="Transparent" />
-          <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="Transparent" />
-          <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="Transparent" />
-          <Thickness x:Key="TextControlBorderThemeThicknessFocused">0</Thickness>
-          <Thickness x:Key="TextControlThemePadding">0</Thickness>
-        </TextBox.Resources>
-      </TextBox>
-    </Grid>
+    <Grid x:Name="ShadowHost" Margin="32" IsHitTestVisible="False" />
+    <Rectangle x:Name="ShadowShape" Margin="32" Fill="Black" RadiusX="29" RadiusY="29" IsHitTestVisible="False" />
 
-    <!-- Results + preview -->
-    <Grid x:Name="Body" Grid.Row="1" Visibility="Collapsed">
-      <Grid.RowDefinitions>
-        <RowDefinition Height="1" />
-        <RowDefinition Height="*" />
-        <RowDefinition Height="1" />
-        <RowDefinition Height="30" />
-      </Grid.RowDefinitions>
-      <Rectangle Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-      <Grid Grid.Row="1">
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="300" />
-          <ColumnDefinition Width="1" />
-          <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
-        <ListView x:Name="Results" Padding="0,2,0,6" SelectionMode="Single" IsTabStop="False"
-                  ItemTemplateSelector="{StaticResource Selector}"
-                  SelectionChanged="Results_SelectionChanged" DoubleTapped="Results_DoubleTapped"
-                  ContainerContentChanging="Results_ContainerContentChanging" />
-        <Rectangle Grid.Column="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+    <Grid x:Name="Glass" Margin="32" CornerRadius="29">
+      <!-- Frosted capture of the desktop, aligned to the window's screen position -->
+      <Canvas IsHitTestVisible="False">
+        <Image x:Name="Backdrop" Canvas.Left="-32" Canvas.Top="-32" Stretch="Fill" />
+      </Canvas>
+      <Border x:Name="Tint" IsHitTestVisible="False" />
 
-        <!-- File preview -->
-        <Grid x:Name="Preview" Grid.Column="2" Padding="24,26,24,14">
-          <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-          </Grid.RowDefinitions>
-          <StackPanel Spacing="6" HorizontalAlignment="Stretch">
-            <Grid Height="80" HorizontalAlignment="Center">
-              <FontIcon x:Name="PvGlyph" FontSize="56" />
-              <Image x:Name="PvIcon" Width="80" Height="80" />
-            </Grid>
-            <TextBlock x:Name="PvName" FontSize="17" FontWeight="SemiBold" TextAlignment="Center"
-                       TextWrapping="Wrap" HorizontalAlignment="Center" />
-            <TextBlock x:Name="PvKind" FontSize="12" HorizontalAlignment="Center"
-                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-          </StackPanel>
-          <TextBlock x:Name="PvSnippet" Grid.Row="1" Margin="0,16,0,0" FontSize="12" TextWrapping="Wrap"
-                     TextTrimming="WordEllipsis" />
-          <StackPanel Grid.Row="2" Spacing="8">
-            <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-            <TextBlock x:Name="PvMeta" FontSize="11" TextWrapping="Wrap"
-                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-          </StackPanel>
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="58" />
+          <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Search bar -->
+        <Grid Padding="20,0,12,0" ColumnSpacing="12">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <FontIcon Glyph="&#xE721;" FontSize="19" Opacity="0.55" />
+          <TextBox x:Name="Query" Grid.Column="1" PlaceholderText="Spotlight Search" FontSize="21"
+                   FontFamily="{StaticResource DisplayFont}" VerticalAlignment="Center" BorderThickness="0" Padding="0"
+                   Background="Transparent" TextChanged="Query_TextChanged" PreviewKeyDown="Query_PreviewKeyDown">
+            <TextBox.Resources>
+              <SolidColorBrush x:Key="TextControlBackground" Color="Transparent" />
+              <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent" />
+              <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent" />
+              <SolidColorBrush x:Key="TextControlBorderBrush" Color="Transparent" />
+              <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="Transparent" />
+              <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="Transparent" />
+              <Thickness x:Key="TextControlBorderThemeThicknessFocused">0</Thickness>
+              <Thickness x:Key="TextControlThemePadding">0</Thickness>
+            </TextBox.Resources>
+          </TextBox>
+          <Button x:Name="SettingsButton" Grid.Column="2" Width="34" Height="34" Padding="0" CornerRadius="17"
+                  Background="Transparent" BorderThickness="0" Click="SettingsButton_Click" IsTabStop="False"
+                  ToolTipService.ToolTip="Appearance (Ctrl+,)">
+            <FontIcon Glyph="&#xE713;" FontSize="15" Opacity="0.6" />
+          </Button>
         </Grid>
 
-        <!-- LLM answer -->
-        <ScrollViewer x:Name="AiView" Grid.Column="2" Visibility="Collapsed" Padding="22,18">
-          <StackPanel Spacing="10">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <FontIcon Glyph="&#xE945;" FontSize="16" Foreground="#BF5AF2" />
-              <TextBlock x:Name="AiTitle" FontSize="12" FontWeight="SemiBold"
-                         Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+        <Grid x:Name="Body" Grid.Row="1" Visibility="Collapsed">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="1" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="32" />
+          </Grid.RowDefinitions>
+          <Rectangle Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+          <!-- Results + preview -->
+          <Grid x:Name="ResultsArea" Grid.Row="1">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition x:Name="ResultsCol" Width="290" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <ListView x:Name="Results" Padding="0,2,0,8" SelectionMode="Single" IsTabStop="False"
+                      ItemTemplateSelector="{StaticResource Selector}"
+                      SelectionChanged="Results_SelectionChanged" DoubleTapped="Results_DoubleTapped"
+                      ContainerContentChanging="Results_ContainerContentChanging">
+              <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
+                  <Setter Property="CornerRadius" Value="8" />
+                  <Setter Property="Margin" Value="8,1" />
+                  <Setter Property="Padding" Value="8,0" />
+                </Style>
+              </ListView.ItemContainerStyle>
+            </ListView>
+            <Rectangle x:Name="PreviewDivider" Grid.Column="1" Width="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+            <!-- File preview -->
+            <Grid x:Name="Preview" Grid.Column="2" Padding="24,28,24,12">
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+              </Grid.RowDefinitions>
+              <StackPanel Spacing="6" HorizontalAlignment="Stretch">
+                <Grid Height="88" HorizontalAlignment="Center">
+                  <FontIcon x:Name="PvGlyph" FontSize="60" />
+                  <Image x:Name="PvIcon" Width="88" Height="88" />
+                </Grid>
+                <TextBlock x:Name="PvName" FontSize="17" FontWeight="SemiBold" TextAlignment="Center"
+                           FontFamily="{StaticResource DisplayFont}" TextWrapping="Wrap" HorizontalAlignment="Center" />
+                <TextBlock x:Name="PvKind" FontSize="12" HorizontalAlignment="Center" Opacity="0.6" />
+              </StackPanel>
+              <TextBlock x:Name="PvSnippet" Grid.Row="1" Margin="0,16,0,0" FontSize="12" TextWrapping="Wrap"
+                         TextTrimming="WordEllipsis" Opacity="0.85" />
+              <StackPanel Grid.Row="2" Spacing="8">
+                <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                <TextBlock x:Name="PvMeta" FontSize="11" TextWrapping="Wrap" Opacity="0.6" />
+              </StackPanel>
+            </Grid>
+
+            <!-- LLM answer -->
+            <ScrollViewer x:Name="AiView" Grid.Column="2" Visibility="Collapsed" Padding="22,18">
+              <StackPanel Spacing="10">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <FontIcon Glyph="&#xE945;" FontSize="16" Foreground="#BF5AF2" />
+                  <TextBlock x:Name="AiTitle" FontSize="12" FontWeight="SemiBold" Opacity="0.65" />
+                </StackPanel>
+                <TextBlock x:Name="AiText" FontSize="14" TextWrapping="Wrap" IsTextSelectionEnabled="True"
+                           LineHeight="22" />
+              </StackPanel>
+            </ScrollViewer>
+          </Grid>
+
+          <!-- Appearance settings -->
+          <ScrollViewer x:Name="SettingsView" Grid.Row="1" Visibility="Collapsed" Padding="28,14,28,8"
+                        HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled">
+            <StackPanel Spacing="8">
+              <TextBlock Text="Appearance" FontSize="20" FontWeight="SemiBold" FontFamily="{StaticResource DisplayFont}" />
+
+              <Border Style="{StaticResource CardStyle}">
+                <StackPanel>
+                  <Grid MinHeight="44">
+                    <TextBlock Text="Appearance" Style="{StaticResource RowLabel}" />
+                    <Border x:Name="ThemeTrack" HorizontalAlignment="Right" VerticalAlignment="Center" CornerRadius="8" Padding="2">
+                      <StackPanel Orientation="Horizontal" Spacing="2">
+                        <Button x:Name="ThemeSystem" Content="Auto" Tag="system" Style="{StaticResource Segment}" Click="Theme_Click" />
+                        <Button x:Name="ThemeLight" Content="Light" Tag="light" Style="{StaticResource Segment}" Click="Theme_Click" />
+                        <Button x:Name="ThemeDark" Content="Dark" Tag="dark" Style="{StaticResource Segment}" Click="Theme_Click" />
+                      </StackPanel>
+                    </Border>
+                  </Grid>
+                  <Rectangle Style="{StaticResource RowDivider}" />
+                  <Grid MinHeight="44">
+                    <TextBlock Text="Accent color" Style="{StaticResource RowLabel}" />
+                    <StackPanel x:Name="AccentDots" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                  </Grid>
+                </StackPanel>
+              </Border>
+
+              <TextBlock Text="Glass" FontSize="12" FontWeight="SemiBold" Opacity="0.55" Margin="4,8,0,0" />
+              <Border Style="{StaticResource CardStyle}">
+                <StackPanel>
+                  <Grid MinHeight="44" ColumnSpacing="8">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <TextBlock Text="Blur" Style="{StaticResource RowLabel}" />
+                    <Slider x:Name="BlurSlider" Grid.Column="1" Style="{StaticResource GlassSlider}" ValueChanged="LookSlider_Changed" />
+                    <TextBlock x:Name="BlurValue" Grid.Column="2" Style="{StaticResource RowValue}" />
+                  </Grid>
+                  <Rectangle Style="{StaticResource RowDivider}" />
+                  <Grid MinHeight="44" ColumnSpacing="8">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <TextBlock Text="Transparency" Style="{StaticResource RowLabel}" />
+                    <Slider x:Name="TransparencySlider" Grid.Column="1" Style="{StaticResource GlassSlider}" ValueChanged="LookSlider_Changed" />
+                    <TextBlock x:Name="TransparencyValue" Grid.Column="2" Style="{StaticResource RowValue}" />
+                  </Grid>
+                  <Rectangle Style="{StaticResource RowDivider}" />
+                  <Grid MinHeight="44" ColumnSpacing="8">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <TextBlock Text="Vibrancy" Style="{StaticResource RowLabel}" />
+                    <Slider x:Name="VibrancySlider" Grid.Column="1" Style="{StaticResource GlassSlider}" ValueChanged="LookSlider_Changed" />
+                    <TextBlock x:Name="VibrancyValue" Grid.Column="2" Style="{StaticResource RowValue}" />
+                  </Grid>
+                  <Rectangle Style="{StaticResource RowDivider}" />
+                  <Grid MinHeight="44">
+                    <TextBlock Text="Edge highlight" Style="{StaticResource RowLabel}" />
+                    <ToggleSwitch x:Name="EdgeSwitch" Style="{StaticResource Switch}" Toggled="LookSwitch_Toggled" />
+                  </Grid>
+                  <Rectangle Style="{StaticResource RowDivider}" />
+                  <Grid MinHeight="44">
+                    <TextBlock Text="Shadow" Style="{StaticResource RowLabel}" />
+                    <ToggleSwitch x:Name="ShadowSwitch" Style="{StaticResource Switch}" Toggled="LookSwitch_Toggled" />
+                  </Grid>
+                </StackPanel>
+              </Border>
+
+              <TextBlock Text="Results" FontSize="12" FontWeight="SemiBold" Opacity="0.55" Margin="4,8,0,0" />
+              <Border Style="{StaticResource CardStyle}">
+                <Grid MinHeight="44">
+                  <TextBlock Text="Show preview pane" Style="{StaticResource RowLabel}" />
+                  <ToggleSwitch x:Name="PreviewSwitch" Style="{StaticResource Switch}" Toggled="LookSwitch_Toggled" />
+                </Grid>
+              </Border>
+
+              <Button Content="Restore Defaults" HorizontalAlignment="Right" Margin="0,6,0,8" CornerRadius="7"
+                      FontSize="12" Click="ResetLook_Click" />
             </StackPanel>
-            <TextBlock x:Name="AiText" FontSize="14" TextWrapping="Wrap" IsTextSelectionEnabled="True"
-                       LineHeight="22" />
-          </StackPanel>
-        </ScrollViewer>
+          </ScrollViewer>
+
+          <Grid Grid.Row="2" Padding="18,0">
+            <TextBlock x:Name="StatusText" FontSize="11" VerticalAlignment="Center" Opacity="0.45"
+                       TextTrimming="CharacterEllipsis" MaxWidth="360" HorizontalAlignment="Left" />
+            <TextBlock x:Name="HintsText" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Right" Opacity="0.45" />
+          </Grid>
+        </Grid>
       </Grid>
-      <Rectangle Grid.Row="2" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-      <Grid Grid.Row="3" Padding="16,0">
-        <TextBlock x:Name="StatusText" FontSize="11" VerticalAlignment="Center"
-                   Foreground="{ThemeResource TextFillColorTertiaryBrush}" TextTrimming="CharacterEllipsis"
-                   MaxWidth="380" HorizontalAlignment="Left" />
-        <TextBlock x:Name="HintsText" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Right"
-                   Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-      </Grid>
+
+      <!-- Liquid Glass rim: a bright specular edge, strongest at the top -->
+      <Border x:Name="Rim" BorderThickness="1" CornerRadius="29" IsHitTestVisible="False" />
     </Grid>
   </Grid>
 </Window>

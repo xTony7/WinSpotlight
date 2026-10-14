@@ -3,10 +3,10 @@ using System.Text.Json;
 
 namespace LSearch;
 
-/// <summary>Win32 plumbing: global hotkey, tray icon, window corner style.</summary>
+/// <summary>Win32 plumbing: global hotkey, tray icon, window corner style, screen capture.</summary>
 internal static partial class Native
 {
-    public const int WM_HOTKEY = 0x0312, WM_APP_TRAY = 0x8001, WM_LBUTTONUP = 0x0202, WM_RBUTTONUP = 0x0205;
+    public const int WM_NCCALCSIZE = 0x0083, WM_HOTKEY = 0x0312, WM_APP_TRAY = 0x8001, WM_LBUTTONUP = 0x0202, WM_RBUTTONUP = 0x0205;
     public const uint MOD_NOREPEAT = 0x4000;
 
     public delegate IntPtr SubclassProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam, IntPtr id, IntPtr refData);
@@ -27,6 +27,10 @@ internal static partial class Native
     public static partial uint GetDpiForWindow(IntPtr hWnd);
     [LibraryImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool SetWindowPos(IntPtr hWnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
+
+    /// <summary>Makes Windows re-ask WM_NCCALCSIZE after the frame style changed.</summary>
+    public static void RefreshFrame(IntPtr hwnd) =>
+        SetWindowPos(hwnd, IntPtr.Zero, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0004 | 0x0010 | 0x0020); // NOSIZE | NOMOVE | NOZORDER | NOACTIVATE | FRAMECHANGED
 
     public static void MakeTopmost(IntPtr hwnd) =>
         SetWindowPos(hwnd, new IntPtr(-1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0040); // NOSIZE | NOMOVE | SHOWWINDOW
@@ -62,10 +66,81 @@ internal static partial class Native
         public uint dwInfoFlags; public Guid guidItem; public IntPtr hBalloonIcon;
     }
 
-    public static void RoundCorners(IntPtr hwnd)
+    public static void RoundCorners(IntPtr hwnd, bool round = true)
     {
-        int round = 2; // DWMWCP_ROUND
-        DwmSetWindowAttribute(hwnd, 33, ref round, sizeof(int));
+        int pref = round ? 2 : 1; // DWMWCP_ROUND : DWMWCP_DONOTROUND
+        DwmSetWindowAttribute(hwnd, 33, ref pref, sizeof(int));
+    }
+
+    // ---- per-pixel transparent window ------------------------------------------
+    [StructLayout(LayoutKind.Sequential)]
+    private struct DWM_BLURBEHIND { public uint dwFlags; public int fEnable; public IntPtr hRgnBlur; public int fTransitionOnMaximized; }
+    [DllImport("dwmapi.dll")] private static extern int DwmEnableBlurBehindWindow(IntPtr hWnd, ref DWM_BLURBEHIND bb);
+    [DllImport("gdi32.dll")] private static extern IntPtr CreateRectRgn(int l, int t, int r, int b);
+
+    /// <summary>Lets the window's alpha channel through to the desktop. Blur-behind with an
+    /// off-screen region turns on DWM's alpha composition without actually blurring anything.</summary>
+    public static void EnableAlpha(IntPtr hwnd)
+    {
+        var rgn = CreateRectRgn(-2, -2, -1, -1);
+        var bb = new DWM_BLURBEHIND { dwFlags = 0x1 | 0x2, fEnable = 1, hRgnBlur = rgn }; // ENABLE | BLURREGION
+        DwmEnableBlurBehindWindow(hwnd, ref bb);
+        DeleteObject(rgn);
+        int none = unchecked((int)0xFFFFFFFE); // DWMWA_COLOR_NONE: no Windows 11 border around the transparent window
+        DwmSetWindowAttribute(hwnd, 34, ref none, sizeof(int)); // DWMWA_BORDER_COLOR
+    }
+
+    [StructLayout(LayoutKind.Sequential)] private struct DispatcherQueueOptions { public int dwSize, threadType, apartmentType; }
+    [DllImport("CoreMessaging.dll")] private static extern int CreateDispatcherQueueController(DispatcherQueueOptions o, out IntPtr controller);
+    private static IntPtr _dqController;
+
+    /// <summary>Windows.UI.Composition (used for the window backdrop) needs a system DispatcherQueue.</summary>
+    public static void EnsureSystemDispatcherQueue()
+    {
+        if (Windows.System.DispatcherQueue.GetForCurrentThread() != null || _dqController != IntPtr.Zero) return;
+        CreateDispatcherQueueController(new DispatcherQueueOptions { dwSize = Marshal.SizeOf<DispatcherQueueOptions>(), threadType = 2 }, out _dqController);
+    }
+
+    // ---- screen capture --------------------------------------------------------
+    [StructLayout(LayoutKind.Sequential)]
+    private struct BITMAPINFOHEADER
+    {
+        public int biSize, biWidth, biHeight; public short biPlanes, biBitCount;
+        public int biCompression, biSizeImage, biXPelsPerMeter, biYPelsPerMeter, biClrUsed, biClrImportant;
+    }
+    [DllImport("user32.dll")] private static extern IntPtr GetDC(IntPtr hWnd);
+    [DllImport("user32.dll")] private static extern int ReleaseDC(IntPtr hWnd, IntPtr dc);
+    [DllImport("gdi32.dll")] private static extern IntPtr CreateCompatibleDC(IntPtr dc);
+    [DllImport("gdi32.dll")] private static extern bool DeleteDC(IntPtr dc);
+    [DllImport("gdi32.dll")] private static extern IntPtr CreateDIBSection(IntPtr dc, ref BITMAPINFOHEADER bmi, uint usage, out IntPtr bits, IntPtr section, uint offset);
+    [DllImport("gdi32.dll")] private static extern IntPtr SelectObject(IntPtr dc, IntPtr obj);
+    [DllImport("gdi32.dll")] private static extern bool DeleteObject(IntPtr obj);
+    [DllImport("gdi32.dll")] private static extern bool BitBlt(IntPtr dst, int x, int y, int w, int h, IntPtr src, int sx, int sy, uint rop);
+
+    /// <summary>BGRA pixels of a screen rectangle (what is behind the window while it is hidden).</summary>
+    public static byte[]? CaptureScreen(int x, int y, int w, int h)
+    {
+        if (w <= 0 || h <= 0) return null;
+        IntPtr screen = GetDC(IntPtr.Zero), mem = CreateCompatibleDC(screen);
+        var bmi = new BITMAPINFOHEADER { biSize = Marshal.SizeOf<BITMAPINFOHEADER>(), biWidth = w, biHeight = -h, biPlanes = 1, biBitCount = 32 };
+        var bmp = CreateDIBSection(mem, ref bmi, 0, out var bits, IntPtr.Zero, 0);
+        try
+        {
+            if (bmp == IntPtr.Zero) return null;
+            var old = SelectObject(mem, bmp);
+            bool ok = BitBlt(mem, 0, 0, w, h, screen, x, y, 0x00CC0020 | 0x40000000); // SRCCOPY | CAPTUREBLT
+            SelectObject(mem, old);
+            if (!ok) return null;
+            var px = new byte[w * h * 4];
+            Marshal.Copy(bits, px, 0, px.Length);
+            return px;
+        }
+        finally
+        {
+            if (bmp != IntPtr.Zero) DeleteObject(bmp);
+            DeleteDC(mem);
+            ReleaseDC(IntPtr.Zero, screen);
+        }
     }
 
     // ---- hotkey -----------------------------------------------------------

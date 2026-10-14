@@ -1,11 +1,17 @@
 using System.Text.Json;
 using System.Text;
 using System.Collections.ObjectModel;
+using System.Numerics;
+using System.Runtime.InteropServices.WindowsRuntime;
+using Microsoft.UI;
+using Microsoft.UI.Composition;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Input;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Hosting;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
@@ -21,7 +27,9 @@ namespace LSearch;
 
 public sealed partial class MainWindow : Window
 {
-    private const int WidthDip = 760, BarDip = 60, ExpandedDip = 500;
+    // The window is transparent; the glass panel sits inside it with room for its shadow.
+    private const int Gutter = 32, WidthDip = 720 + 2 * Gutter, BarDip = 58 + 2 * Gutter, ExpandedDip = 520 + 2 * Gutter;
+    private const double PillRadius = 29, PanelRadius = 24;
 
     private readonly IntPtr _hwnd;
     private readonly AppWindow _appWindow;
@@ -36,6 +44,15 @@ public sealed partial class MainWindow : Window
     private string _hotkey;
     private bool _quitting;
 
+    private Appearance _look;
+    private readonly SolidColorBrush _accent;
+    private readonly DispatcherQueueTimer _saveTimer;
+    private readonly Windows.UI.ViewManagement.UISettings _uiSettings = new();
+    private SpriteVisual? _shadowVisual;
+    private byte[]? _capture;
+    private int _capW, _capH;
+    private bool _loadingLook = true; // until the settings controls hold the loaded values
+
     /// <summary>Debug aid (--pin): keep the window open when it loses focus.</summary>
     public bool Pinned { get; set; }
 
@@ -47,7 +64,32 @@ public sealed partial class MainWindow : Window
 
         _appWindow.IsShownInSwitchers = false;
         _appWindow.Closing += (_, e) => { if (!_quitting) { e.Cancel = true; Hide(); } };
-        Native.RoundCorners(_hwnd);
+        Native.RoundCorners(_hwnd, false);
+        Native.EnableAlpha(_hwnd);
+
+        _look = Appearance.Load();
+        _accent = new SolidColorBrush(_look.AccentColor);
+        foreach (var key in new[] {
+            "ListViewItemBackgroundSelected", "ListViewItemBackgroundSelectedPointerOver", "ListViewItemBackgroundSelectedPressed",
+            "ToggleSwitchFillOn", "ToggleSwitchFillOnPointerOver", "ToggleSwitchFillOnPressed",
+            "SliderTrackValueFill", "SliderTrackValueFillPointerOver", "SliderTrackValueFillPressed",
+            "SliderThumbBackground", "SliderThumbBackgroundPointerOver", "SliderThumbBackgroundPressed" })
+            Root.Resources[key] = _accent;
+        var white = new SolidColorBrush(Colors.White);
+        foreach (var key in new[] { "ListViewItemForegroundSelected", "ListViewItemForegroundSelectedPointerOver", "ListViewItemForegroundSelectedPressed" })
+            Root.Resources[key] = white;
+        foreach (var key in new[] { "ToggleSwitchKnobFillOn", "ToggleSwitchKnobFillOnPointerOver", "ToggleSwitchKnobFillOnPressed" })
+            Root.Resources[key] = white;
+        Root.Resources["ListViewItemSelectionIndicatorVisualEnabled"] = false;
+        Root.Resources["ListViewItemBackgroundPointerOver"] = new SolidColorBrush(ColorHelper.FromArgb(0x1C, 0x80, 0x80, 0x80));
+        Query.SelectionHighlightColor = _accent;
+        BuildAccentDots();
+        // Follow the system light/dark switch while in Auto.
+        _uiSettings.ColorValuesChanged += (_, _) => DispatcherQueue.TryEnqueue(ApplyLook);
+        _saveTimer = DispatcherQueue.CreateTimer();
+        _saveTimer.Interval = TimeSpan.FromMilliseconds(400);
+        _saveTimer.IsRepeating = false;
+        _saveTimer.Tick += (_, _) => _look.Save();
         Activated += (_, e) => { if (e.WindowActivationState == WindowActivationState.Deactivated && !Pinned) Hide(); };
 
         Results.ItemsSource = _items;
@@ -89,12 +131,18 @@ public sealed partial class MainWindow : Window
         if (s == null) { StatusText.Text = "Starting search backend…"; return; }
         StatusText.Text = s.Status;
         _llmName = s.Llm;
-        HintsText.Text = "↵ Open    Ctrl+↵ Show in Explorer" + (_llmName != null ? $"    Tab Fix with {_llmName}" : "");
+        UpdateHints();
     }
+
+    private void UpdateHints() => HintsText.Text = SettingsOpen
+        ? "Esc Close    Changes are saved automatically"
+        : "↵ Open    Ctrl+↵ Show in Explorer" + (_llmName != null ? $"    Tab Fix with {_llmName}" : "");
 
     // ---- window plumbing ----------------------------------------------------
     private IntPtr WndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam, IntPtr id, IntPtr refData)
     {
+        // No non-client frame: the transparent client area is the whole window.
+        if (msg == Native.WM_NCCALCSIZE && wParam != IntPtr.Zero) return IntPtr.Zero;
         if (msg == Native.WM_HOTKEY) Toggle();
         else if (msg == Native.WM_APP_TRAY)
         {
@@ -102,14 +150,15 @@ public sealed partial class MainWindow : Window
             if (ev == Native.WM_LBUTTONUP) Toggle();
             else if (ev == Native.WM_RBUTTONUP)
             {
-                switch (Native.ShowTrayMenu(_hwnd, "Search", "Rebuild index now", "Setup…", "Open config", null, "Quit LSearch"))
+                switch (Native.ShowTrayMenu(_hwnd, "Search", "Appearance…", "Rebuild index now", "Setup…", "Open config", null, "Quit LSearch"))
                 {
                     case 1: Toggle(); break;
-                    case 2: _ = _backend.ReindexAsync(); break;
-                    case 3: OpenSetup(); break;
-                    case 4: _ = Launcher.LaunchUriAsync(new Uri(Path.Combine(
+                    case 2: OpenAppearance(); break;
+                    case 3: _ = _backend.ReindexAsync(); break;
+                    case 4: OpenSetup(); break;
+                    case 5: _ = Launcher.LaunchUriAsync(new Uri(Path.Combine(
                         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "LSearch", "config.json"))); break;
-                    case 6: Quit(); break;
+                    case 7: Quit(); break;
                 }
             }
         }
@@ -146,7 +195,9 @@ public sealed partial class MainWindow : Window
         Native.GetCursorPos(out var p);
         var area = DisplayArea.GetFromPoint(new PointInt32(p.X, p.Y), DisplayAreaFallback.Nearest).WorkArea;
         Resize(Body.Visibility == Visibility.Visible);
-        _appWindow.Move(new PointInt32(area.X + (area.Width - _appWindow.Size.Width) / 2, area.Y + (int)(area.Height * 0.2)));
+        int x = area.X + (area.Width - _appWindow.Size.Width) / 2, y = area.Y + (int)(area.Height * 0.2) - (int)(Gutter * Scale);
+        _appWindow.Move(new PointInt32(x, y));
+        CaptureBackdrop(x, y);
         _appWindow.Show();
         Native.MakeTopmost(_hwnd);
         Activate();
@@ -160,10 +211,12 @@ public sealed partial class MainWindow : Window
     private void ConfigurePresenter()
     {
         var presenter = (OverlappedPresenter)_appWindow.Presenter;
-        presenter.SetBorderAndTitleBar(true, false);
+        presenter.SetBorderAndTitleBar(false, false);
         presenter.IsResizable = presenter.IsMaximizable = presenter.IsMinimizable = false;
         presenter.IsAlwaysOnTop = true;
-        Native.RoundCorners(_hwnd);
+        Native.RoundCorners(_hwnd, false);
+        Native.EnableAlpha(_hwnd);
+        Native.RefreshFrame(_hwnd);
     }
 
     /// <summary>WinUI only builds the visual tree once a window is activated, so activate
@@ -173,6 +226,9 @@ public sealed partial class MainWindow : Window
         Root.Loaded += (_, _) =>
         {
             ConfigurePresenter();
+            CreateShadow();
+            LoadLookControls();
+            ApplyLook();
             _appWindow.Hide();
             if (query != null) Query.Text = query;
             if (show) Toggle();
@@ -186,6 +242,13 @@ public sealed partial class MainWindow : Window
     {
         _statusTimer.Stop();
         _appWindow.Hide();
+        if (SettingsOpen) ShowSettings(false);
+    }
+
+    /// <summary>Clicks on the transparent margin around the glass dismiss it, like clicking away.</summary>
+    private void Root_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        if (ReferenceEquals(e.OriginalSource, Root)) Hide();
     }
 
     private void Quit()
@@ -193,6 +256,7 @@ public sealed partial class MainWindow : Window
         _quitting = true;
         Native.UnregisterHotKey(_hwnd, 1);
         Native.RemoveTrayIcon(ref _tray);
+        if (_saveTimer.IsRunning) _look.Save();
         _backend.Dispose();
         Close();
         Application.Current.Exit();
@@ -201,6 +265,7 @@ public sealed partial class MainWindow : Window
     // ---- search ----------------------------------------------------------
     private void Query_TextChanged(object sender, TextChangedEventArgs e)
     {
+        if (SettingsOpen) ShowSettings(false);
         CancelAsk();
         _debounce.Stop();
         _debounce.Start();
@@ -303,6 +368,10 @@ public sealed partial class MainWindow : Window
     {
         Body.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
         Resize(on);
+        // A capsule while it is just the search field, a rounded card once results show.
+        double r = on ? PanelRadius : PillRadius;
+        Glass.CornerRadius = Rim.CornerRadius = new CornerRadius(r);
+        ShadowShape.RadiusX = ShadowShape.RadiusY = r;
     }
 
     private void SelectFirst()
@@ -337,6 +406,7 @@ public sealed partial class MainWindow : Window
         if (Results.SelectedItem is not ResultItem it) return;
         if (it.Type == ItemType.Header) { SelectFirst(); return; }
         bool ask = it.Type is ItemType.Ask or ItemType.Task;
+        ShowPane(ask);
         AiView.Visibility = ask ? Visibility.Visible : Visibility.Collapsed;
         Preview.Visibility = ask ? Visibility.Collapsed : Visibility.Visible;
         if (ask)
@@ -388,11 +458,15 @@ public sealed partial class MainWindow : Window
     private void Query_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
         bool ctrl = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control).HasFlag(CoreVirtualKeyStates.Down);
+        const VirtualKey comma = (VirtualKey)188; // VK_OEM_COMMA: Ctrl+, opens Appearance, like Cmd+, on a Mac
+        if (SettingsOpen && e.Key != VirtualKey.Escape && !(ctrl && e.Key == comma)) return;
         switch (e.Key)
         {
+            case VirtualKey.Escape when SettingsOpen: ShowSettings(false); break;
             case VirtualKey.Escape:
                 if (Query.Text.Length > 0) Query.Text = ""; else Hide();
                 break;
+            case comma when ctrl: ShowSettings(!SettingsOpen); break;
             case VirtualKey.Down: Move(1); break;
             case VirtualKey.Up: Move(-1); break;
             case VirtualKey.Enter: _ = ActivateAsync(ctrl); break;
@@ -442,6 +516,7 @@ public sealed partial class MainWindow : Window
         var askRow = _items.FirstOrDefault(i => i.Type == ItemType.Ask);
         var cts = _askCts = new CancellationTokenSource();
         if (askRow != null) Results.SelectedItem = askRow;
+        ShowPane(true);
         AiView.Visibility = Visibility.Visible;
         Preview.Visibility = Visibility.Collapsed;
         AiTitle.Text = _llmName;
@@ -469,6 +544,7 @@ public sealed partial class MainWindow : Window
         CancelAsk();
         var cts = _askCts = new CancellationTokenSource();
         Results.SelectedItem = row;
+        ShowPane(true);
         AiView.Visibility = Visibility.Visible;
         Preview.Visibility = Visibility.Collapsed;
         AiTitle.Text = $"{_llmName} · {row.Title}";
@@ -508,5 +584,208 @@ public sealed partial class MainWindow : Window
     {
         _askCts?.Cancel();
         _askCts = null;
+    }
+
+    // ---- appearance -------------------------------------------------------------
+    private bool SettingsOpen => SettingsView.Visibility == Visibility.Visible;
+
+    public void OpenAppearance()
+    {
+        if (!_appWindow.IsVisible) Toggle();
+        ShowSettings(true);
+    }
+
+    private void SettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        ShowSettings(!SettingsOpen);
+        if (!SettingsOpen) Query.Focus(FocusState.Programmatic);
+    }
+
+    private void ShowSettings(bool on)
+    {
+        SettingsView.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+        ResultsArea.Visibility = on ? Visibility.Collapsed : Visibility.Visible;
+        UpdateHints();
+        SetExpanded(on || (_items.Count > 0 && Query.Text.Trim().Length > 0));
+    }
+
+    private void Root_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key != VirtualKey.Escape || !SettingsOpen) return;
+        ShowSettings(false);
+        Query.Focus(FocusState.Programmatic);
+        e.Handled = true;
+    }
+
+    /// <summary>Preview pane on the right; LLM answers always get it, files only if enabled.</summary>
+    private void ShowPane(bool ai)
+    {
+        bool show = _look.Preview || ai;
+        ResultsCol.Width = show ? new GridLength(290) : new GridLength(1, GridUnitType.Star);
+        ResultsArea.ColumnDefinitions[2].Width = show ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+        PreviewDivider.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>Snapshots the desktop behind the (still hidden) window, at its expanded size,
+    /// so the glass can show it frosted. Taken on every show, since what's behind changes.</summary>
+    private void CaptureBackdrop(int x, int y)
+    {
+        _capW = (int)(WidthDip * Scale);
+        _capH = (int)(ExpandedDip * Scale);
+        _capture = Native.CaptureScreen(x, y, _capW, _capH);
+        Backdrop.Width = WidthDip;
+        Backdrop.Height = ExpandedDip;
+        RenderBackdrop();
+        ApplyLook();
+    }
+
+    private void RenderBackdrop()
+    {
+        if (_capture == null) { Backdrop.Source = null; return; }
+        var (px, w, h) = Frost.Process(_capture, _capW, _capH, _look.Blur * 0.5 * Scale, 1 + _look.Vibrancy / 100.0);
+        var bmp = new WriteableBitmap(w, h);
+        using (var s = bmp.PixelBuffer.AsStream()) s.Write(px, 0, px.Length);
+        bmp.Invalidate();
+        Backdrop.Source = bmp;
+    }
+
+    private void CreateShadow()
+    {
+        var compositor = ElementCompositionPreview.GetElementVisual(ShadowHost).Compositor;
+        var shadow = compositor.CreateDropShadow();
+        shadow.BlurRadius = 44;
+        shadow.Offset = new Vector3(0, 16, 0);
+        shadow.Color = Colors.Black;
+        shadow.Mask = ShadowShape.GetAlphaMask();
+        var visual = _shadowVisual = compositor.CreateSpriteVisual();
+        visual.Shadow = shadow;
+        visual.Size = new Vector2((float)ShadowHost.ActualWidth, (float)ShadowHost.ActualHeight);
+        ShadowHost.SizeChanged += (_, e) => visual.Size = new Vector2((float)e.NewSize.Width, (float)e.NewSize.Height);
+        ElementCompositionPreview.SetElementChildVisual(ShadowHost, visual);
+    }
+
+    private bool SystemIsDark() => _uiSettings.GetColorValue(Windows.UI.ViewManagement.UIColorType.Background).R < 128;
+
+    private static Windows.UI.Color Rgba(byte a, byte r, byte g, byte b) => ColorHelper.FromArgb(a, r, g, b);
+
+    private void ApplyLook()
+    {
+        // Only the glass is themed: a Light theme on the window root makes WinUI paint the
+        // transparent margin around it opaque white.
+        bool dark = _look.Theme switch { "light" => false, "dark" => true, _ => SystemIsDark() };
+        Root.RequestedTheme = ElementTheme.Dark;
+        Glass.RequestedTheme = dark ? ElementTheme.Dark : ElementTheme.Light;
+
+        // Without a capture there is nothing to see through, so the tint goes opaque.
+        byte a = (byte)(255 * (_capture == null ? 1 : 1 - _look.Transparency / 100.0 * (dark ? 0.85 : 0.7)));
+        Tint.Background = new SolidColorBrush(dark ? Rgba(a, 0x1E, 0x1E, 0x20) : Rgba(a, 0xF6, 0xF6, 0xF8));
+
+        if (_look.GlassEdge)
+        {
+            var rim = new LinearGradientBrush { StartPoint = new Windows.Foundation.Point(0, 0), EndPoint = new Windows.Foundation.Point(0, 1) };
+            rim.GradientStops.Add(new GradientStop { Offset = 0, Color = dark ? Rgba(0x66, 255, 255, 255) : Rgba(0xFF, 255, 255, 255) });
+            rim.GradientStops.Add(new GradientStop { Offset = 0.4, Color = dark ? Rgba(0x16, 255, 255, 255) : Rgba(0x80, 255, 255, 255) });
+            rim.GradientStops.Add(new GradientStop { Offset = 1, Color = dark ? Rgba(0x2A, 255, 255, 255) : Rgba(0xB0, 255, 255, 255) });
+            Rim.BorderBrush = rim;
+        }
+        else Rim.BorderBrush = new SolidColorBrush(dark ? Rgba(0x22, 255, 255, 255) : Rgba(0x18, 0, 0, 0));
+
+        if (_shadowVisual is { Shadow: DropShadow sh })
+        {
+            _shadowVisual.IsVisible = _look.Shadow;
+            sh.Opacity = dark ? 0.55f : 0.28f;
+        }
+
+        _accent.Color = _look.AccentColor;
+        foreach (var dot in AccentDots.Children.OfType<Border>())
+        {
+            bool sel = (string)dot.Tag == _look.Accent;
+            dot.BorderBrush = new SolidColorBrush(sel ? (dark ? Rgba(0xD0, 255, 255, 255) : Rgba(0x60, 0, 0, 0)) : Colors.Transparent);
+            dot.Child.Visibility = sel ? Visibility.Visible : Visibility.Collapsed;
+        }
+        ThemeTrack.Background = new SolidColorBrush(dark ? Rgba(0x1F, 255, 255, 255) : Rgba(0x12, 0, 0, 0));
+        foreach (var b in new[] { ThemeSystem, ThemeLight, ThemeDark })
+            b.Background = new SolidColorBrush((string)b.Tag == _look.Theme ? (dark ? Rgba(255, 0x63, 0x63, 0x66) : Colors.White) : Colors.Transparent);
+
+        ShowPane(Results.SelectedItem is ResultItem { Type: ItemType.Ask or ItemType.Task });
+    }
+
+    private void BuildAccentDots()
+    {
+        foreach (var (key, name, color) in Appearance.Accents)
+        {
+            var dot = new Border
+            {
+                Width = 20, Height = 20, CornerRadius = new CornerRadius(10), BorderThickness = new Thickness(2),
+                Background = new SolidColorBrush(color), Tag = key,
+                Child = new Microsoft.UI.Xaml.Shapes.Ellipse { Width = 6, Height = 6, Fill = new SolidColorBrush(Colors.White) },
+            };
+            ToolTipService.SetToolTip(dot, name);
+            dot.Tapped += (_, _) => { _look.Accent = key; ApplyLook(); SaveLookSoon(); };
+            AccentDots.Children.Add(dot);
+        }
+    }
+
+    private void LoadLookControls()
+    {
+        _loadingLook = true;
+        BlurSlider.Value = _look.Blur;
+        TransparencySlider.Value = _look.Transparency;
+        VibrancySlider.Value = _look.Vibrancy;
+        EdgeSwitch.IsOn = _look.GlassEdge;
+        ShadowSwitch.IsOn = _look.Shadow;
+        PreviewSwitch.IsOn = _look.Preview;
+        _loadingLook = false;
+        UpdateLookValues();
+    }
+
+    private void UpdateLookValues()
+    {
+        BlurValue.Text = $"{_look.Blur}%";
+        TransparencyValue.Text = $"{_look.Transparency}%";
+        VibrancyValue.Text = $"{_look.Vibrancy}%";
+    }
+
+    private void LookSlider_Changed(object sender, RangeBaseValueChangedEventArgs e) => ReadLookControls();
+
+    private void LookSwitch_Toggled(object sender, RoutedEventArgs e) => ReadLookControls();
+
+    private void ReadLookControls()
+    {
+        if (_loadingLook) return;
+        int blur = (int)BlurSlider.Value, vibrancy = (int)VibrancySlider.Value;
+        bool refrost = blur != _look.Blur || vibrancy != _look.Vibrancy;
+        _look.Blur = blur;
+        _look.Vibrancy = vibrancy;
+        _look.Transparency = (int)TransparencySlider.Value;
+        _look.GlassEdge = EdgeSwitch.IsOn;
+        _look.Shadow = ShadowSwitch.IsOn;
+        _look.Preview = PreviewSwitch.IsOn;
+        UpdateLookValues();
+        if (refrost) RenderBackdrop();
+        ApplyLook();
+        SaveLookSoon();
+    }
+
+    private void Theme_Click(object sender, RoutedEventArgs e)
+    {
+        _look.Theme = (string)((FrameworkElement)sender).Tag;
+        ApplyLook();
+        SaveLookSoon();
+    }
+
+    private void ResetLook_Click(object sender, RoutedEventArgs e)
+    {
+        _look = new Appearance();
+        LoadLookControls();
+        RenderBackdrop();
+        ApplyLook();
+        SaveLookSoon();
+    }
+
+    private void SaveLookSoon()
+    {
+        _saveTimer.Stop();
+        _saveTimer.Start();
     }
 }

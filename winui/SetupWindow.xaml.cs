@@ -217,6 +217,8 @@ public sealed partial class SetupWindow : Window
         else llm["enabled"] = false; // under 16 GB: LLA is never offered
         _cfg["llm"] = llm;
         _cfg["setup_complete"] = true;
+        // Appearance may have changed on disk while the wizard was open.
+        if (LoadConfig()["appearance"] is { } look) _cfg["appearance"] = look.DeepClone();
         Directory.CreateDirectory(Path.GetDirectoryName(ConfigPath)!);
         File.WriteAllText(ConfigPath, _cfg.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
         Completed?.Invoke();

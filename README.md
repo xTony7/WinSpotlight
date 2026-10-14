@@ -47,6 +47,14 @@ LLA writes out its reasoning before each step, so it is slow on small CPUs (abou
 
 Config lives at `%APPDATA%\LSearch\config.json` (tray → *Open config*).
 
+### Appearance
+
+The window is a frosted-glass panel in the style of macOS Spotlight. Click the gear in the search
+bar, press Ctrl+, or use tray → *Appearance…* to change the theme (Auto, Light, Dark), accent color,
+blur, transparency, vibrancy, edge highlight, shadow and preview pane. Changes apply live and are
+saved under `appearance` in config.json. The glass frosts a snapshot of the desktop taken each time
+the window opens, so video playing behind it stays still until the next open.
+
 ### Using your own model
 
 LLA runs through llama.cpp's `llama-server` on port 1114. To use another model, point `llm` at any
