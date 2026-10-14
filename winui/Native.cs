@@ -75,9 +75,9 @@ internal static partial class Native
         {
             var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "LSearch", "config.json");
             using var doc = JsonDocument.Parse(File.ReadAllText(path));
-            return doc.RootElement.GetProperty("hotkey").GetString() ?? "win+y";
+            return doc.RootElement.GetProperty("hotkey").GetString() ?? "alt+space";
         }
-        catch { return "win+y"; }
+        catch { return "alt+space"; }
     }
 
     public static (uint mods, uint vk) ParseHotkey(string spec)

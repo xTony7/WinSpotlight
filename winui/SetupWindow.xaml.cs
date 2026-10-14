@@ -48,7 +48,7 @@ public sealed partial class SetupWindow : Window
         HistoryToggle.IsOn = _cfg["browser_history"]?.GetValue<bool>() ?? true;
         LlaToggle.IsOn = _cfg["llm"]?["enabled"]?.GetValue<bool>() ?? false;
         UpdateLlaDownload();
-        HotkeyText.Text = $"Open LSearch any time with {_cfg["hotkey"]?.GetValue<string>()?.ToUpperInvariant() ?? "WIN+Y"}.";
+        HotkeyText.Text = $"Open LSearch any time with {_cfg["hotkey"]?.GetValue<string>()?.ToUpperInvariant() ?? "ALT+SPACE"}.";
 
         long ramKb = InstalledRamKb();
         _showLla = ramKb >= LlaMinRamKb;

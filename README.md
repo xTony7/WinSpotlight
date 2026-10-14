@@ -1,6 +1,6 @@
 # LSearch — Spotlight for Windows
 
-A Spotlight-style launcher for Windows. Press **Win+Y** to search apps, files, document contents
+A Spotlight-style launcher for Windows. Press **Alt+Space** to search apps, files, document contents
 and browser history by meaning, not just by name. It can also fix files for you with **LLA**, a
 local mixture-of-experts model: type `fix app.py it crashes on start` and press Tab.
 

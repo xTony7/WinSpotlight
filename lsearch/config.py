@@ -11,7 +11,7 @@ HOME = str(Path.home())
 
 DEFAULTS = {
     # Global hotkey. Modifiers: alt, ctrl, shift, win. Key: any single key name or "space".
-    "hotkey": "win+y",
+    "hotkey": "alt+space",
     # Set by the setup wizard once it has run.
     "setup_complete": False,
     "browser_history": True,
