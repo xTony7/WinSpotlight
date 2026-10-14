@@ -6,10 +6,13 @@ import re
 import time
 
 from . import store
+from .i18n import t
 
-SECTION_ORDER = [("app", "Applications"), ("document", "Documents"), ("code", "Code"),
-                 ("folder", "Folders"), ("image", "Images"), ("video", "Movies"),
-                 ("audio", "Music"), ("archive", "Archives"), ("other", "Other")]
+SECTION_ORDER = [("app", t("Applications", "Aplicaciones")), ("document", t("Documents", "Documentos")),
+                 ("code", t("Code", "Código")), ("folder", t("Folders", "Carpetas")),
+                 ("image", t("Images", "Imágenes")), ("video", t("Movies", "Películas")),
+                 ("audio", t("Music", "Música")), ("archive", t("Archives", "Archivos comprimidos")),
+                 ("other", t("Other", "Otros"))]
 PER_SECTION = 5
 RRF_K = 40
 RERANK_TOP = 20

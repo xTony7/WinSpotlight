@@ -22,6 +22,7 @@ from . import config, store
 from .embeddings import Embedder
 from .agent import run_task
 from .history import BrowserHistory
+from .i18n import t
 from .indexer import Indexer
 from .llm import build_messages, make_provider
 from .llamaserver import LlamaServer
@@ -58,10 +59,10 @@ class Backend:
                 return {"top": None, "calc": None, "sections": [], "task": None, "stale": True}
             top, sections, calc = self.engine.search(q, rerank)
         pick = lambda r: {k: r.get(k) for k in FIELDS}
-        out = [{"title": t, "items": [pick(r) for r in items]} for t, items in sections]
+        out = [{"title": title, "items": [pick(r) for r in items]} for title, items in sections]
         web = self.history.search(q) if self.history else []
         if web:  # always the last section, below local results
-            out.append({"title": "Browser History", "items": web})
+            out.append({"title": t("Browser History", "Historial del navegador"), "items": web})
         task = None
         if self.llm:
             target = self.resolve_target(q)
@@ -179,12 +180,13 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.flush()
         try:
             if not b.llm:
-                raise RuntimeError("LLA is disabled — enable it in Setup")
+                raise RuntimeError(t("LLA is disabled — enable it in Setup", "LLA está desactivado; actívalo en la configuración inicial"))
             target = b.resolve_target(q)
             if not target:
-                raise RuntimeError("Couldn't tell which file you mean. Include its name, e.g. fix app.py it crashes on start")
+                raise RuntimeError(t("Couldn't tell which file you mean. Include its name, e.g. fix app.py it crashes on start",
+                                     "No sé a qué archivo te refieres. Incluye su nombre, p. ej. fix app.py it crashes on start"))
             if not b.model_server._healthy():
-                send({"type": "thought", "agent": "LSearch", "text": f"Loading {b.llm.name}…"})
+                send({"type": "thought", "agent": "WinSpotlight", "text": t(f"Loading {b.llm.name}…", f"Cargando {b.llm.name}…")})
             b.model_server.ensure()
             run_task(b.cfg["llm"] | {"agent": b.cfg["agent"]}, q, target, send)
         except (BrokenPipeError, ConnectionResetError):
@@ -207,7 +209,8 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.flush()
         try:
             if not b.llm:
-                raise RuntimeError("LLM is disabled — set llm.enabled in config.json")
+                raise RuntimeError(t("LLM is disabled — set llm.enabled in config.json",
+                                     "El LLM está desactivado; activa llm.enabled en config.json"))
             b.model_server.ensure()
             for t in b.llm.stream(build_messages(b.cfg["llm"], q, b.context(q))):
                 send({"t": t})

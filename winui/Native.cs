@@ -1,12 +1,12 @@
 using System.Runtime.InteropServices;
 using System.Text.Json;
 
-namespace LSearch;
+namespace WinSpotlight;
 
 /// <summary>Win32 plumbing: global hotkey, tray icon, window corner style, screen capture.</summary>
 internal static partial class Native
 {
-    public const int WM_NCCALCSIZE = 0x0083, WM_HOTKEY = 0x0312, WM_APP_TRAY = 0x8001, WM_LBUTTONUP = 0x0202, WM_RBUTTONUP = 0x0205;
+    public const int WM_NCCALCSIZE = 0x0083, WM_NCPAINT = 0x0085, WM_NCACTIVATE = 0x0086, WM_HOTKEY = 0x0312, WM_APP_TRAY = 0x8001, WM_LBUTTONUP = 0x0202, WM_RBUTTONUP = 0x0205;
     public const uint MOD_NOREPEAT = 0x4000;
 
     public delegate IntPtr SubclassProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam, IntPtr id, IntPtr refData);
@@ -27,6 +27,17 @@ internal static partial class Native
     public static partial uint GetDpiForWindow(IntPtr hWnd);
     [LibraryImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool SetWindowPos(IntPtr hWnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
+
+    [LibraryImport("user32.dll", EntryPoint = "SetWindowLongW")]
+    private static partial int SetWindowLong(IntPtr hWnd, int index, int value);
+
+    /// <summary>Drops the caption, system menu and sizing frame styles, so Windows never paints a
+    /// classic title bar over the borderless window.</summary>
+    public static void StripFrame(IntPtr hwnd)
+    {
+        const int WS_CAPTION = 0x00C00000, WS_SYSMENU = 0x00080000, WS_THICKFRAME = 0x00040000;
+        SetWindowLong(hwnd, -16, GetWindowLong(hwnd, -16) & ~(WS_CAPTION | WS_SYSMENU | WS_THICKFRAME));
+    }
 
     /// <summary>Makes Windows re-ask WM_NCCALCSIZE after the frame style changed.</summary>
     public static void RefreshFrame(IntPtr hwnd) =>
@@ -148,7 +159,7 @@ internal static partial class Native
     {
         try
         {
-            var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "LSearch", "config.json");
+            var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "WinSpotlight", "config.json");
             using var doc = JsonDocument.Parse(File.ReadAllText(path));
             return doc.RootElement.GetProperty("hotkey").GetString() ?? "alt+space";
         }

@@ -23,7 +23,7 @@ using Windows.UI.Core;
 using WinRT.Interop;
 using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
 
-namespace LSearch;
+namespace WinSpotlight;
 
 public sealed partial class MainWindow : Window
 {
@@ -106,7 +106,7 @@ public sealed partial class MainWindow : Window
         Native.SetWindowSubclass(_hwnd, _wndProc, 1, IntPtr.Zero);
         var (mods, vk) = Native.ParseHotkey(_hotkey);
         bool hotkeyOk = Native.RegisterHotKey(_hwnd, 1, mods, vk);
-        _tray = Native.AddTrayIcon(_hwnd, hotkeyOk ? $"LSearch — {Pretty(_hotkey)}" : $"LSearch — {_hotkey} is taken; edit config.json");
+        _tray = Native.AddTrayIcon(_hwnd, hotkeyOk ? $"WinSpotlight — {Pretty(_hotkey)}" : $"WinSpotlight — {L.HotkeyTaken(_hotkey)}");
         Resize(false);
         _ = StartBackendAsync();
     }
@@ -128,21 +128,23 @@ public sealed partial class MainWindow : Window
     private async Task RefreshStatusAsync()
     {
         var s = await _backend.StatusAsync();
-        if (s == null) { StatusText.Text = "Starting search backend…"; return; }
+        if (s == null) { StatusText.Text = L.StartingBackend; return; }
         StatusText.Text = s.Status;
         _llmName = s.Llm;
         UpdateHints();
     }
 
     private void UpdateHints() => HintsText.Text = SettingsOpen
-        ? "Esc Close    Changes are saved automatically"
-        : "↵ Open    Ctrl+↵ Show in Explorer" + (_llmName != null ? $"    Tab Fix with {_llmName}" : "");
+        ? L.HintsSettings
+        : L.Hints + (_llmName != null ? L.HintFix(_llmName) : "");
 
     // ---- window plumbing ----------------------------------------------------
     private IntPtr WndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam, IntPtr id, IntPtr refData)
     {
         // No non-client frame: the transparent client area is the whole window.
         if (msg == Native.WM_NCCALCSIZE && wParam != IntPtr.Zero) return IntPtr.Zero;
+        if (msg == Native.WM_NCPAINT) return IntPtr.Zero;
+        if (msg == Native.WM_NCACTIVATE) return new IntPtr(1);
         if (msg == Native.WM_HOTKEY) Toggle();
         else if (msg == Native.WM_APP_TRAY)
         {
@@ -150,14 +152,14 @@ public sealed partial class MainWindow : Window
             if (ev == Native.WM_LBUTTONUP) Toggle();
             else if (ev == Native.WM_RBUTTONUP)
             {
-                switch (Native.ShowTrayMenu(_hwnd, "Search", "Appearance…", "Rebuild index now", "Setup…", "Open config", null, "Quit LSearch"))
+                switch (Native.ShowTrayMenu(_hwnd, L.MenuSearch, L.MenuAppearance, L.MenuReindex, L.MenuSetup, L.MenuConfig, null, L.MenuQuit))
                 {
                     case 1: Toggle(); break;
                     case 2: OpenAppearance(); break;
                     case 3: _ = _backend.ReindexAsync(); break;
                     case 4: OpenSetup(); break;
                     case 5: _ = Launcher.LaunchUriAsync(new Uri(Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "LSearch", "config.json"))); break;
+                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "WinSpotlight", "config.json"))); break;
                     case 7: Quit(); break;
                 }
             }
@@ -178,7 +180,7 @@ public sealed partial class MainWindow : Window
 
     private async Task RestartBackendAsync()
     {
-        StatusText.Text = "Applying settings…";
+        StatusText.Text = L.ApplyingSettings;
         await _backend.RestartAsync();
         for (int i = 0; i < 60 && await _backend.StatusAsync() == null; i++) await Task.Delay(500);
         await RefreshStatusAsync();
@@ -216,6 +218,7 @@ public sealed partial class MainWindow : Window
         presenter.IsAlwaysOnTop = true;
         Native.RoundCorners(_hwnd, false);
         Native.EnableAlpha(_hwnd);
+        Native.StripFrame(_hwnd);
         Native.RefreshFrame(_hwnd);
     }
 
@@ -285,7 +288,7 @@ public sealed partial class MainWindow : Window
             SearchResponse? r;
             try { r = await _backend.SearchAsync(q, rerank, cts.Token); }
             catch (OperationCanceledException) { return; }
-            catch { StatusText.Text = "Search backend not reachable"; SetExpanded(true); return; }
+            catch { StatusText.Text = L.BackendUnreachable; SetExpanded(true); return; }
             if (cts.IsCancellationRequested || r == null) return;
             Render(r, q);
         }
@@ -296,12 +299,12 @@ public sealed partial class MainWindow : Window
         _items.Clear();
         if (r.Calc != null)
         {
-            _items.Add(ResultItem.Header("Calculator"));
+            _items.Add(ResultItem.Header(L.Calculator));
             _items.Add(new ResultItem { Type = ItemType.Calc, Title = $"= {r.Calc}", Subtitle = q, Value = r.Calc, Glyph = "" });
         }
         if (r.Top != null)
         {
-            _items.Add(ResultItem.Header("Top Hit"));
+            _items.Add(ResultItem.Header(L.TopHit));
             _items.Add(FileItem(r.Top));
         }
         if (_llmName != null && r.Task != null)
@@ -309,7 +312,7 @@ public sealed partial class MainWindow : Window
             _items.Add(ResultItem.Header(_llmName));
             _items.Add(new ResultItem
             {
-                Type = ItemType.Task, Title = $"Fix {System.IO.Path.GetFileName(r.Task.Target)}",
+                Type = ItemType.Task, Title = L.Fix(System.IO.Path.GetFileName(r.Task.Target)),
                 Subtitle = r.Task.Target, Value = r.Task.Target, Glyph = "", GlyphBrush = ResultItem.Purple,
             });
         }
@@ -338,7 +341,7 @@ public sealed partial class MainWindow : Window
         {
             Type = ItemType.File, Hit = h,
             Title = h.Kind == "app" ? Path.GetFileNameWithoutExtension(h.Name) : h.Name,
-            Subtitle = h.Kind == "app" ? "Application" : (Path.GetDirectoryName(h.Path) ?? "").Replace(home, "~"),
+            Subtitle = h.Kind == "app" ? L.Application : (Path.GetDirectoryName(h.Path) ?? "").Replace(home, "~"),
         };
         _ = SetIconAsync(item, h);
         return item;
@@ -412,7 +415,7 @@ public sealed partial class MainWindow : Window
         if (ask)
         {
             AiTitle.Text = _llmName ?? "";
-            if (_askCts == null) AiText.Text = $"Press Tab or ↵ and {_llmName}'s agents will edit\n{it.Value}\nA .lsearch.bak backup is kept.";
+            if (_askCts == null) AiText.Text = L.AgentIntro(_llmName ?? "", it.Value ?? "");
             return;
         }
         PvIcon.Source = null;
@@ -420,7 +423,7 @@ public sealed partial class MainWindow : Window
         {
             PvGlyph.Glyph = "";
             PvName.Text = it.Value;
-            PvKind.Text = "Calculator · ↵ copies the result";
+            PvKind.Text = L.CalcHint;
             PvSnippet.Text = "";
             PvMeta.Text = it.Subtitle;
             return;
@@ -431,17 +434,17 @@ public sealed partial class MainWindow : Window
         {
             PvGlyph.Glyph = "";
             PvName.Text = it.Title;
-            PvKind.Text = "Web Page · " + h.Snippet;
+            PvKind.Text = $"{L.WebPage} · {h.Snippet}";
             PvSnippet.Text = h.Path;
-            PvMeta.Text = $"Last visited   {mod:MMM d, yyyy 'at' h:mm tt}";
+            PvMeta.Text = $"{L.LastVisited}   {L.Date(mod)}";
             return;
         }
         PvGlyph.Glyph = "";
         PvName.Text = it.Title;
-        var kind = h.Kind switch { "app" => "Application", "folder" => "Folder", var k => char.ToUpperInvariant(k[0]) + k[1..] };
+        var kind = L.Kind(h.Kind);
         PvKind.Text = h.Kind is "app" or "folder" ? kind : $"{kind} · {HumanSize(h.Size ?? 0)}";
         PvSnippet.Text = h.Snippet ?? "";
-        PvMeta.Text = $"Modified   {mod:MMM d, yyyy 'at' h:mm tt}\nWhere   {Path.GetDirectoryName(h.Path)}";
+        PvMeta.Text = $"{L.Modified}   {L.Date(mod)}\n{L.Where}   {Path.GetDirectoryName(h.Path)}";
         var big = await LoadIconAsync(h, 96);
         if (Results.SelectedItem == it) PvIcon.Source = big;
     }
@@ -520,7 +523,7 @@ public sealed partial class MainWindow : Window
         AiView.Visibility = Visibility.Visible;
         Preview.Visibility = Visibility.Collapsed;
         AiTitle.Text = _llmName;
-        AiText.Text = "Thinking…";
+        AiText.Text = L.Thinking;
         var first = true;
         try
         {
@@ -532,7 +535,7 @@ public sealed partial class MainWindow : Window
             }
         }
         catch (OperationCanceledException) { }
-        catch (Exception ex) { if (!cts.IsCancellationRequested) AiText.Text = $"Couldn't reach {_llmName}:\n{ex.Message}"; }
+        catch (Exception ex) { if (!cts.IsCancellationRequested) AiText.Text = $"{L.CantReach(_llmName)}:\n{ex.Message}"; }
     }
 
     private async Task RunTaskAsync()
@@ -548,7 +551,7 @@ public sealed partial class MainWindow : Window
         AiView.Visibility = Visibility.Visible;
         Preview.Visibility = Visibility.Collapsed;
         AiTitle.Text = $"{_llmName} · {row.Title}";
-        AiText.Text = "Starting…";
+        AiText.Text = L.Starting;
         var log = new StringBuilder();
         void Add(string s) { log.AppendLine(s).AppendLine(); AiText.Text = log.ToString(); AiView.ChangeView(null, AiView.ScrollableHeight, null, true); }
         string Str(JsonElement e, string k) => e.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
@@ -559,7 +562,7 @@ public sealed partial class MainWindow : Window
                 var agent = Str(ev, "agent");
                 switch (Str(ev, "type"))
                 {
-                    case "start": Add($"Working on {Str(ev, "target")}"); break;
+                    case "start": Add(L.WorkingOn(Str(ev, "target"))); break;
                     case "thought": Add($"{agent} 💭 {Str(ev, "text")}"); break;
                     case "tool":
                         var args = ev.TryGetProperty("arg", out var a) ? a.ToString() : "";
@@ -577,7 +580,7 @@ public sealed partial class MainWindow : Window
             }
         }
         catch (OperationCanceledException) { }
-        catch (Exception ex) { if (!cts.IsCancellationRequested) Add($"❌ Couldn't reach {_llmName}: {ex.Message}"); }
+        catch (Exception ex) { if (!cts.IsCancellationRequested) Add($"❌ {L.CantReach(_llmName ?? "")}: {ex.Message}"); }
     }
 
     private void CancelAsk()
@@ -712,7 +715,7 @@ public sealed partial class MainWindow : Window
 
     private void BuildAccentDots()
     {
-        foreach (var (key, name, color) in Appearance.Accents)
+        foreach (var (key, _, color) in Appearance.Accents)
         {
             var dot = new Border
             {
@@ -720,7 +723,7 @@ public sealed partial class MainWindow : Window
                 Background = new SolidColorBrush(color), Tag = key,
                 Child = new Microsoft.UI.Xaml.Shapes.Ellipse { Width = 6, Height = 6, Fill = new SolidColorBrush(Colors.White) },
             };
-            ToolTipService.SetToolTip(dot, name);
+            ToolTipService.SetToolTip(dot, L.AccentName(key));
             dot.Tapped += (_, _) => { _look.Accent = key; ApplyLook(); SaveLookSoon(); };
             AccentDots.Children.Add(dot);
         }

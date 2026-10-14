@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 
-namespace LSearch;
+namespace WinSpotlight;
 
 /// <summary>Talks to (and if needed launches) the Python indexer/search/LLM backend.</summary>
 public sealed class Backend : IDisposable
@@ -15,25 +15,25 @@ public sealed class Backend : IDisposable
 
     public static string? FindRoot()
     {
-        var env = Environment.GetEnvironmentVariable("LSEARCH_ROOT");
-        if (env != null && File.Exists(Path.Combine(env, "lsearch", "server.py"))) return env;
+        var env = Environment.GetEnvironmentVariable("WINSPOTLIGHT_ROOT");
+        if (env != null && File.Exists(Path.Combine(env, "winspotlight", "server.py"))) return env;
         for (var d = new DirectoryInfo(AppContext.BaseDirectory); d != null; d = d.Parent)
-            if (File.Exists(Path.Combine(d.FullName, "lsearch", "server.py"))) return d.FullName;
+            if (File.Exists(Path.Combine(d.FullName, "winspotlight", "server.py"))) return d.FullName;
         return null;
     }
 
     public async Task EnsureRunningAsync()
     {
         if (await StatusAsync() != null) return;
-        // Packaged builds ship the backend as an exe next to LSearch.exe; dev builds run the Python source.
-        var bundled = Path.Combine(AppContext.BaseDirectory, "backend", "lsearch-backend.exe");
+        // Packaged builds ship the backend as an exe next to WinSpotlight.exe; dev builds run the Python source.
+        var bundled = Path.Combine(AppContext.BaseDirectory, "backend", "winspotlight-backend.exe");
         if (File.Exists(bundled))
         {
             _proc = Process.Start(new ProcessStartInfo(bundled, $"--port {Port}") { UseShellExecute = false, CreateNoWindow = true });
             return;
         }
-        var root = FindRoot() ?? throw new InvalidOperationException("Can't find the lsearch Python package (set LSEARCH_ROOT).");
-        _proc = Process.Start(new ProcessStartInfo("pythonw.exe", $"-m lsearch.server --port {Port}")
+        var root = FindRoot() ?? throw new InvalidOperationException("Can't find the winspotlight Python package (set WINSPOTLIGHT_ROOT).");
+        _proc = Process.Start(new ProcessStartInfo("pythonw.exe", $"-m winspotlight.server --port {Port}")
         {
             WorkingDirectory = root,
             UseShellExecute = false,

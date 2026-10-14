@@ -8,4 +8,4 @@ __pycache__/
 .vs/
 *.user
 *.gguf
-*.lsearch.bak
+*.winspotlight.bak

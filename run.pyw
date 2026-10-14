@@ -1,3 +1,3 @@
-from lsearch.app import main
+from winspotlight.app import main
 
 main()

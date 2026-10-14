@@ -1,9 +1,9 @@
-"""User configuration, stored at %APPDATA%\\LSearch\\config.json."""
+"""User configuration, stored at %APPDATA%\\WinSpotlight\\config.json."""
 import json
 import os
 from pathlib import Path
 
-APP_DIR = Path(os.environ.get("APPDATA", Path.home())) / "LSearch"
+APP_DIR = Path(os.environ.get("APPDATA", Path.home())) / "WinSpotlight"
 CONFIG_PATH = APP_DIR / "config.json"
 DB_PATH = APP_DIR / "index.db"
 
@@ -12,6 +12,8 @@ HOME = str(Path.home())
 DEFAULTS = {
     # Global hotkey. Modifiers: alt, ctrl, shift, win. Key: any single key name or "space".
     "hotkey": "alt+space",
+    # UI language: "auto" follows Windows; "en" or "es" forces English or Spanish.
+    "language": "auto",
     # Look of the WinUI window; edited live from its Appearance panel (gear button / Ctrl+,).
     "appearance": {
         "theme": "system",  # system | light | dark
@@ -51,7 +53,7 @@ DEFAULTS = {
         "ollama_url": "http://127.0.0.1:11434",
     },
     # LLA task agents ("fix <file> it does <problem>"). Edits stay inside the target file's folder
-    # and every edited file is backed up as <name>.lsearch.bak first.
+    # and every edited file is backed up as <name>.winspotlight.bak first.
     "agent": {"allow_commands": False},
     # Local LLM slot. Any OpenAI-compatible server works: llama.cpp `llama-server`,
     # LM Studio, vLLM, Ollama (base_url .../v1), text-generation-webui, etc.
@@ -64,8 +66,8 @@ DEFAULTS = {
         "api_key": "",
         "temperature": 0.3,
         "max_tokens": 4096,  # reasoning models spend tokens thinking before they answer
-        "model_path": "",  # a .gguf here makes LSearch run it with llama-server on base_url's port
-        "server_path": "",  # default: %LOCALAPPDATA%\LSearch\llama\llama-server.exe
+        "model_path": "",  # a .gguf here makes WinSpotlight run it with llama-server on base_url's port
+        "server_path": "",  # default: %LOCALAPPDATA%\WinSpotlight\llama\llama-server.exe
         "ctx_size": 8192,
         "threads": 0,  # 0 = llama.cpp default
         "idle_minutes": 15,  # unload the model after this long unused

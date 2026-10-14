@@ -44,7 +44,7 @@ class OllamaBackend:
         return "embeddinggemma" in self.model
 
     def passages(self, texts):
-        if self.gemma:  # EmbeddingGemma's document format; LSearch chunks are "filename: content"
+        if self.gemma:  # EmbeddingGemma's document format; WinSpotlight chunks are "filename: content"
             texts = [f"title: {t.split(': ', 1)[0]} | text: {t.split(': ', 1)[-1]}" for t in texts]
         return self._embed(list(texts))
 

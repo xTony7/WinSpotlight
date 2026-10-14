@@ -1,8 +1,8 @@
-<Window x:Class="LSearch.MainWindow"
+<Window x:Class="WinSpotlight.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:local="using:LSearch"
-        Title="LSearch">
+        xmlns:local="using:WinSpotlight"
+        Title="WinSpotlight">
   <Window.SystemBackdrop>
     <local:TransparentBackdrop />
   </Window.SystemBackdrop>
@@ -112,7 +112,7 @@
             <ColumnDefinition Width="Auto" />
           </Grid.ColumnDefinitions>
           <FontIcon Glyph="&#xE721;" FontSize="19" Opacity="0.55" />
-          <TextBox x:Name="Query" Grid.Column="1" PlaceholderText="Spotlight Search" FontSize="21"
+          <TextBox x:Name="Query" Grid.Column="1" PlaceholderText="{x:Bind local:L.SearchPlaceholder}" FontSize="21"
                    FontFamily="{StaticResource DisplayFont}" VerticalAlignment="Center" BorderThickness="0" Padding="0"
                    Background="Transparent" TextChanged="Query_TextChanged" PreviewKeyDown="Query_PreviewKeyDown">
             <TextBox.Resources>
@@ -128,7 +128,7 @@
           </TextBox>
           <Button x:Name="SettingsButton" Grid.Column="2" Width="34" Height="34" Padding="0" CornerRadius="17"
                   Background="Transparent" BorderThickness="0" Click="SettingsButton_Click" IsTabStop="False"
-                  ToolTipService.ToolTip="Appearance (Ctrl+,)">
+                  ToolTipService.ToolTip="{x:Bind local:L.AppearanceTip}">
             <FontIcon Glyph="&#xE713;" FontSize="15" Opacity="0.6" />
           </Button>
         </Grid>
@@ -203,73 +203,73 @@
           <ScrollViewer x:Name="SettingsView" Grid.Row="1" Visibility="Collapsed" Padding="28,14,28,8"
                         HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled">
             <StackPanel Spacing="8">
-              <TextBlock Text="Appearance" FontSize="20" FontWeight="SemiBold" FontFamily="{StaticResource DisplayFont}" />
+              <TextBlock Text="{x:Bind local:L.Appearance}" FontSize="20" FontWeight="SemiBold" FontFamily="{StaticResource DisplayFont}" />
 
               <Border Style="{StaticResource CardStyle}">
                 <StackPanel>
                   <Grid MinHeight="44">
-                    <TextBlock Text="Appearance" Style="{StaticResource RowLabel}" />
+                    <TextBlock Text="{x:Bind local:L.Mode}" Style="{StaticResource RowLabel}" />
                     <Border x:Name="ThemeTrack" HorizontalAlignment="Right" VerticalAlignment="Center" CornerRadius="8" Padding="2">
                       <StackPanel Orientation="Horizontal" Spacing="2">
-                        <Button x:Name="ThemeSystem" Content="Auto" Tag="system" Style="{StaticResource Segment}" Click="Theme_Click" />
-                        <Button x:Name="ThemeLight" Content="Light" Tag="light" Style="{StaticResource Segment}" Click="Theme_Click" />
-                        <Button x:Name="ThemeDark" Content="Dark" Tag="dark" Style="{StaticResource Segment}" Click="Theme_Click" />
+                        <Button x:Name="ThemeSystem" Content="{x:Bind local:L.Auto}" Tag="system" Style="{StaticResource Segment}" Click="Theme_Click" />
+                        <Button x:Name="ThemeLight" Content="{x:Bind local:L.Light}" Tag="light" Style="{StaticResource Segment}" Click="Theme_Click" />
+                        <Button x:Name="ThemeDark" Content="{x:Bind local:L.Dark}" Tag="dark" Style="{StaticResource Segment}" Click="Theme_Click" />
                       </StackPanel>
                     </Border>
                   </Grid>
                   <Rectangle Style="{StaticResource RowDivider}" />
                   <Grid MinHeight="44">
-                    <TextBlock Text="Accent color" Style="{StaticResource RowLabel}" />
+                    <TextBlock Text="{x:Bind local:L.AccentColor}" Style="{StaticResource RowLabel}" />
                     <StackPanel x:Name="AccentDots" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" VerticalAlignment="Center" />
                   </Grid>
                 </StackPanel>
               </Border>
 
-              <TextBlock Text="Glass" FontSize="12" FontWeight="SemiBold" Opacity="0.55" Margin="4,8,0,0" />
+              <TextBlock Text="{x:Bind local:L.Glass}" FontSize="12" FontWeight="SemiBold" Opacity="0.55" Margin="4,8,0,0" />
               <Border Style="{StaticResource CardStyle}">
                 <StackPanel>
                   <Grid MinHeight="44" ColumnSpacing="8">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <TextBlock Text="Blur" Style="{StaticResource RowLabel}" />
+                    <TextBlock Text="{x:Bind local:L.Blur}" Style="{StaticResource RowLabel}" />
                     <Slider x:Name="BlurSlider" Grid.Column="1" Style="{StaticResource GlassSlider}" ValueChanged="LookSlider_Changed" />
                     <TextBlock x:Name="BlurValue" Grid.Column="2" Style="{StaticResource RowValue}" />
                   </Grid>
                   <Rectangle Style="{StaticResource RowDivider}" />
                   <Grid MinHeight="44" ColumnSpacing="8">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <TextBlock Text="Transparency" Style="{StaticResource RowLabel}" />
+                    <TextBlock Text="{x:Bind local:L.Transparency}" Style="{StaticResource RowLabel}" />
                     <Slider x:Name="TransparencySlider" Grid.Column="1" Style="{StaticResource GlassSlider}" ValueChanged="LookSlider_Changed" />
                     <TextBlock x:Name="TransparencyValue" Grid.Column="2" Style="{StaticResource RowValue}" />
                   </Grid>
                   <Rectangle Style="{StaticResource RowDivider}" />
                   <Grid MinHeight="44" ColumnSpacing="8">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <TextBlock Text="Vibrancy" Style="{StaticResource RowLabel}" />
+                    <TextBlock Text="{x:Bind local:L.Vibrancy}" Style="{StaticResource RowLabel}" />
                     <Slider x:Name="VibrancySlider" Grid.Column="1" Style="{StaticResource GlassSlider}" ValueChanged="LookSlider_Changed" />
                     <TextBlock x:Name="VibrancyValue" Grid.Column="2" Style="{StaticResource RowValue}" />
                   </Grid>
                   <Rectangle Style="{StaticResource RowDivider}" />
                   <Grid MinHeight="44">
-                    <TextBlock Text="Edge highlight" Style="{StaticResource RowLabel}" />
+                    <TextBlock Text="{x:Bind local:L.EdgeHighlight}" Style="{StaticResource RowLabel}" />
                     <ToggleSwitch x:Name="EdgeSwitch" Style="{StaticResource Switch}" Toggled="LookSwitch_Toggled" />
                   </Grid>
                   <Rectangle Style="{StaticResource RowDivider}" />
                   <Grid MinHeight="44">
-                    <TextBlock Text="Shadow" Style="{StaticResource RowLabel}" />
+                    <TextBlock Text="{x:Bind local:L.Shadow}" Style="{StaticResource RowLabel}" />
                     <ToggleSwitch x:Name="ShadowSwitch" Style="{StaticResource Switch}" Toggled="LookSwitch_Toggled" />
                   </Grid>
                 </StackPanel>
               </Border>
 
-              <TextBlock Text="Results" FontSize="12" FontWeight="SemiBold" Opacity="0.55" Margin="4,8,0,0" />
+              <TextBlock Text="{x:Bind local:L.Results}" FontSize="12" FontWeight="SemiBold" Opacity="0.55" Margin="4,8,0,0" />
               <Border Style="{StaticResource CardStyle}">
                 <Grid MinHeight="44">
-                  <TextBlock Text="Show preview pane" Style="{StaticResource RowLabel}" />
+                  <TextBlock Text="{x:Bind local:L.ShowPreview}" Style="{StaticResource RowLabel}" />
                   <ToggleSwitch x:Name="PreviewSwitch" Style="{StaticResource Switch}" Toggled="LookSwitch_Toggled" />
                 </Grid>
               </Border>
 
-              <Button Content="Restore Defaults" HorizontalAlignment="Right" Margin="0,6,0,8" CornerRadius="7"
+              <Button Content="{x:Bind local:L.RestoreDefaults}" HorizontalAlignment="Right" Margin="0,6,0,8" CornerRadius="7"
                       FontSize="12" Click="ResetLook_Click" />
             </StackPanel>
           </ScrollViewer>

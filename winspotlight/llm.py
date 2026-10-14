@@ -49,7 +49,7 @@ class OpenAICompatProvider(LLMProvider):
 
 
 class InProcessProvider(LLMProvider):
-    """Template for running your fine-tune directly inside LSearch.
+    """Template for running your fine-tune directly inside WinSpotlight.
 
     Example with llama-cpp-python:
         from llama_cpp import Llama

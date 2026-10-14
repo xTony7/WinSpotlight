@@ -158,7 +158,7 @@ class SpotlightWindow(QWidget):
         self.ai_text = ""
         self.results = []
         self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setWindowTitle("LSearch")
+        self.setWindowTitle("WinSpotlight")
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(30, 20, 30, 40)  # room for the drop shadow

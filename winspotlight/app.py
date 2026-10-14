@@ -70,7 +70,7 @@ class HotkeyThread(QThread):
 
 def main():
     ctypes.windll.shcore.SetProcessDpiAwareness(2)
-    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("LSearch")
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("WinSpotlight")
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
     cfg = config.load()
@@ -90,7 +90,7 @@ def main():
     icon = QIcon(magnifier_pixmap(64, "#0a84ff"))
     app.setWindowIcon(icon)
     tray = QSystemTrayIcon(icon)
-    tray.setToolTip(f"LSearch — {cfg['hotkey']}")
+    tray.setToolTip(f"WinSpotlight — {cfg['hotkey']}")
     menu = QMenu()
     menu.addAction("Search", win.toggle)
     menu.addAction("Rebuild index now", indexer.rescan_now)
@@ -99,16 +99,16 @@ def main():
     menu.addAction("Quit", app.quit)
     tray.setContextMenu(menu)
     tray.activated.connect(lambda r: win.toggle() if r == QSystemTrayIcon.Trigger else None)
-    bridge.status.connect(lambda s: tray.setToolTip(f"LSearch — {cfg['hotkey']}\n{s}"))
+    bridge.status.connect(lambda s: tray.setToolTip(f"WinSpotlight — {cfg['hotkey']}\n{s}"))
     tray.show()
 
     hotkey = HotkeyThread(cfg["hotkey"])
     hotkey.pressed.connect(win.toggle)
-    hotkey.failed.connect(lambda m: tray.showMessage("LSearch", m))
+    hotkey.failed.connect(lambda m: tray.showMessage("WinSpotlight", m))
     hotkey.start()
     indexer.start()
 
-    tray.showMessage("LSearch", f"Press {cfg['hotkey'].title()} to search. Indexing in the background…")
+    tray.showMessage("WinSpotlight", f"Press {cfg['hotkey'].title()} to search. Indexing in the background…")
 
     def shutdown():
         hotkey.stop()

@@ -8,6 +8,7 @@ import threading
 
 from . import store
 from .config import DB_PATH
+from .i18n import t
 
 FILE_ATTRIBUTE_REPARSE_POINT = 0x400
 DRIVE_FIXED = 3
@@ -97,17 +98,18 @@ class Indexer(threading.Thread):
     # ---- main loop -------------------------------------------------------
     def run(self):
         self.con = store.connect(DB_PATH)
-        self._emit("Loading embedding model…")
+        self._emit(t("Loading embedding model…", "Cargando el modelo de embeddings…"))
         self.embedder.load()
         if self.embedder.error:
-            self._emit(f"Embeddings unavailable: {self.embedder.error[:80]}")
+            self._emit(t("Embeddings unavailable: ", "Embeddings no disponibles: ") + self.embedder.error[:80])
         while not self._stop:
             t0 = time.time()
             self.scan()
             if self.embedder.ready:
                 self.embed_pending()
             n = self.con.execute("SELECT COUNT(*) FROM files").fetchone()[0]
-            self._emit(f"{n:,} items indexed · {len(self.vindex):,} passages · {time.time() - t0:.0f}s")
+            self._emit(t(f"{n:,} items indexed · {len(self.vindex):,} passages · {time.time() - t0:.0f}s",
+                         f"{n:,} elementos indexados · {len(self.vindex):,} fragmentos · {time.time() - t0:.0f} s"))
             deadline = time.time() + self.cfg["rescan_minutes"] * 60
             while not self._stop and not self._force and time.time() < deadline:
                 time.sleep(0.5)
@@ -178,7 +180,7 @@ class Indexer(threading.Thread):
                         count += 1
                 if len(batch) >= 5000:
                     flush()
-                    self._emit(f"Scanning {drive} · {count:,} items…")
+                    self._emit(t(f"Scanning {drive} · {count:,} items…", f"Explorando {drive} · {count:,} elementos…"))
         flush()
         if self._stop:
             return
@@ -238,5 +240,5 @@ class Indexer(threading.Thread):
             self.vindex.add(ids, [r["id"]] * len(ids), vecs)
             if n % 25 == 0:
                 self.con.commit()
-                self._emit(f"Embedding {n:,}/{total:,} · {r['name'][:40]}")
+                self._emit(t("Embedding ", "Procesando ") + f"{n:,}/{total:,} · {r['name'][:40]}")
         self.con.commit()

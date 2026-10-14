@@ -1,8 +1,9 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using Windows.UI;
 
-namespace LSearch;
+namespace WinSpotlight;
 
 /// <summary>Look-and-feel settings, stored under "appearance" in config.json.</summary>
 public sealed class Appearance
@@ -29,7 +30,7 @@ public sealed class Appearance
         ("graphite", "Graphite", Color.FromArgb(255, 0x8E, 0x8E, 0x93)),
     };
 
-    public Color AccentColor => Accents.FirstOrDefault(a => a.Key == Accent, Accents[0]).Color;
+    [JsonIgnore] public Color AccentColor => Accents.FirstOrDefault(a => a.Key == Accent, Accents[0]).Color;
 
     private static readonly JsonSerializerOptions Json = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
 

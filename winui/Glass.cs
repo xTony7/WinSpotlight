@@ -2,7 +2,7 @@ using Microsoft.UI.Composition;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 
-namespace LSearch;
+namespace WinSpotlight;
 
 /// <summary>A fully transparent window backdrop, so the XAML content can draw its own
 /// rounded glass shape and shadow instead of filling the whole window rectangle.</summary>

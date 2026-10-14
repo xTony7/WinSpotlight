@@ -8,14 +8,14 @@ using Windows.Graphics;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
 
-namespace LSearch;
+namespace WinSpotlight;
 
-/// <summary>First-run (and tray "Setup…") wizard. Writes %APPDATA%\LSearch\config.json.</summary>
+/// <summary>First-run (and tray "Setup…") wizard. Writes %APPDATA%\WinSpotlight\config.json.</summary>
 public sealed partial class SetupWindow : Window
 {
     public const long LlaMinRamKb = 16L * 1024 * 1024;
     public static readonly string ConfigPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "LSearch", "config.json");
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "WinSpotlight", "config.json");
 
     private readonly ObservableCollection<string> _folders = new();
     private readonly JsonObject _cfg;
@@ -29,6 +29,7 @@ public sealed partial class SetupWindow : Window
     public SetupWindow()
     {
         InitializeComponent();
+        Title = L.SetupTitle;
         ExtendsContentIntoTitleBar = true;
         var hwnd = WindowNative.GetWindowHandle(this);
         double scale = Native.GetDpiForWindow(hwnd) / 96.0;
@@ -48,11 +49,11 @@ public sealed partial class SetupWindow : Window
         HistoryToggle.IsOn = _cfg["browser_history"]?.GetValue<bool>() ?? true;
         LlaToggle.IsOn = _cfg["llm"]?["enabled"]?.GetValue<bool>() ?? false;
         UpdateLlaDownload();
-        HotkeyText.Text = $"Open LSearch any time with {_cfg["hotkey"]?.GetValue<string>()?.ToUpperInvariant() ?? "ALT+SPACE"}.";
+        HotkeyText.Text = L.OpenWith(_cfg["hotkey"]?.GetValue<string>()?.ToUpperInvariant() ?? "ALT+SPACE");
 
         long ramKb = InstalledRamKb();
         _showLla = ramKb >= LlaMinRamKb;
-        RamText.Text = $"This PC has {ramKb / 1024.0 / 1024.0:0} GB of RAM.";
+        RamText.Text = L.Ram(ramKb / 1024.0 / 1024.0);
         _pages = new() { PageWelcome, PageFolders, PageHistory };
         if (_showLla) _pages.Add(PageLla);
         _pages.Add(PageDone);
@@ -77,9 +78,9 @@ public sealed partial class SetupWindow : Window
         _page = i;
         for (int k = 0; k < _pages.Count; k++)
             _pages[k].Visibility = k == i ? Visibility.Visible : Visibility.Collapsed;
-        StepText.Text = $"LSearch setup · Step {i + 1} of {_pages.Count}";
+        StepText.Text = L.Step(i + 1, _pages.Count);
         BackButton.Visibility = i == 0 || _pages[i] == PageDone ? Visibility.Collapsed : Visibility.Visible;
-        NextButton.Content = _pages[i] == PageDone ? "Finish" : i == _pages.Count - 2 ? "Save" : "Next";
+        NextButton.Content = _pages[i] == PageDone ? L.Finish : i == _pages.Count - 2 ? L.Save : L.Next;
         if (_pages[i] == PageDone) SummaryText.Text = Summary();
     }
 
@@ -87,12 +88,12 @@ public sealed partial class SetupWindow : Window
     {
         var lines = new List<string>
         {
-            $"• Indexing contents of {_folders.Count} folder{(_folders.Count == 1 ? "" : "s")}",
-            AllDrivesToggle.IsOn ? "• Finding files by name on all drives" : "• Finding files only inside those folders",
-            HistoryToggle.IsOn ? "• Including browser history" : "• Browser history off",
+            L.SumFolders(_folders.Count),
+            AllDrivesToggle.IsOn ? L.SumAllDrives : L.SumFoldersOnly,
+            HistoryToggle.IsOn ? L.SumHistoryOn : L.SumHistoryOff,
         };
-        if (_showLla) lines.Add(LlaToggle.IsOn ? "• LLA on" : "• LLA off");
-        lines.Add("\nLSearch will now restart its index in the background.");
+        if (_showLla) lines.Add(LlaToggle.IsOn ? L.SumLlaOn : L.SumLlaOff);
+        lines.Add(L.SumRestart);
         return string.Join("\n", lines);
     }
 
@@ -109,7 +110,7 @@ public sealed partial class SetupWindow : Window
     private const string LlaUrl = "https://huggingface.co/scutoid/2x4B/resolve/main/LLA-2x4B-Q4_K_M.gguf";
     private const string LlamaServerZip = "https://github.com/ggml-org/llama.cpp/releases/download/b11559/llama-b11559-bin-win-cpu-x64.zip";
     private static readonly string AppLocal = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LSearch");
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinSpotlight");
     private static readonly string LlaModelPath = Path.Combine(AppLocal, "models", "LLA-2x4B-Q4_K_M.gguf");
     private static readonly string LlamaServerExe = Path.Combine(AppLocal, "llama", "llama-server.exe");
     private bool _downloading;
@@ -123,7 +124,7 @@ public sealed partial class SetupWindow : Window
         LlaDownload.Visibility = LlaToggle.IsOn ? Visibility.Visible : Visibility.Collapsed;
         if (_downloading) return;
         LlaDownloadButton.Visibility = have ? Visibility.Collapsed : Visibility.Visible;
-        LlaDownloadText.Text = have ? "✓ LLA is installed." : "";
+        LlaDownloadText.Text = have ? L.LlaInstalled : "";
     }
 
     private async void LlaDownload_Click(object sender, RoutedEventArgs e)
@@ -137,8 +138,8 @@ public sealed partial class SetupWindow : Window
             using var http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
             if (!File.Exists(LlamaServerExe))
             {
-                LlaDownloadText.Text = "Downloading llama.cpp…";
-                var zip = Path.Combine(Path.GetTempPath(), "lsearch-llama.zip");
+                LlaDownloadText.Text = L.DownloadingLlama;
+                var zip = Path.Combine(Path.GetTempPath(), "winspotlight-llama.zip");
                 await DownloadAsync(http, LlamaServerZip, zip);
                 System.IO.Compression.ZipFile.ExtractToDirectory(zip, Path.GetDirectoryName(LlamaServerExe)!, true);
                 File.Delete(zip);
@@ -151,8 +152,8 @@ public sealed partial class SetupWindow : Window
         {
             _downloading = false;
             LlaDownloadButton.IsEnabled = true;
-            LlaDownloadButton.Content = "Resume download";
-            LlaDownloadText.Text = "Download failed: " + ex.Message;
+            LlaDownloadButton.Content = L.ResumeDownload;
+            LlaDownloadText.Text = L.DownloadFailed + ex.Message;
         }
         finally
         {

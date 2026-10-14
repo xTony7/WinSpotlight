@@ -5,7 +5,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 
-namespace LSearch;
+namespace WinSpotlight;
 
 public record FileHit(
     [property: JsonPropertyName("id")] long Id,

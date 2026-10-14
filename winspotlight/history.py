@@ -36,7 +36,7 @@ def _history_files():
 
 
 def _read(kind, path):
-    tmp = os.path.join(tempfile.gettempdir(), f"lsearch-hist-{os.getpid()}-{abs(hash(path))}.sqlite")
+    tmp = os.path.join(tempfile.gettempdir(), f"winspotlight-hist-{os.getpid()}-{abs(hash(path))}.sqlite")
     shutil.copy2(path, tmp)
     try:
         con = sqlite3.connect(f"file:{tmp}?mode=ro", uri=True)

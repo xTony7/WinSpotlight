@@ -12,7 +12,9 @@ import time
 import urllib.request
 from urllib.parse import urlparse
 
-DEFAULT_EXE = os.path.join(os.environ.get("LOCALAPPDATA", ""), "LSearch", "llama", "llama-server.exe")
+from .i18n import t
+
+DEFAULT_EXE = os.path.join(os.environ.get("LOCALAPPDATA", ""), "WinSpotlight", "llama", "llama-server.exe")
 
 
 class LlamaServer:
@@ -44,21 +46,23 @@ class LlamaServer:
         if self._healthy():
             return
         if not self.managed:
-            raise RuntimeError(f"No model server on port {self.port}. Set llm.model_path to a .gguf "
-                               "file, or start your own OpenAI-compatible server there.")
+            raise RuntimeError(t(f"No model server on port {self.port}. Set llm.model_path to a .gguf "
+                                 "file, or start your own OpenAI-compatible server there.",
+                                 f"No hay servidor de modelos en el puerto {self.port}. Pon un archivo .gguf en "
+                                 "llm.model_path o inicia ahí tu propio servidor compatible con OpenAI."))
         with self.lock:
             if self.proc is None or self.proc.poll() is not None:
                 exe = self.cfg.get("server_path") or DEFAULT_EXE
                 model = self.cfg["model_path"]
                 if not os.path.isfile(exe):
-                    raise RuntimeError(f"llama-server not found at {exe}")
+                    raise RuntimeError(t(f"llama-server not found at {exe}", f"No se encontró llama-server en {exe}"))
                 if not os.path.isfile(model):
-                    raise RuntimeError(f"Model file not found: {model}")
+                    raise RuntimeError(t(f"Model file not found: {model}", f"No se encontró el modelo: {model}"))
                 args = [exe, "-m", model, "--host", self.host, "--port", str(self.port),
                         "-c", str(self.cfg.get("ctx_size", 8192)), "--jinja", "--alias", self.cfg["model"]]
                 if self.cfg.get("threads"):
                     args += ["-t", str(self.cfg["threads"])]
-                log = open(os.path.join(os.environ.get("TEMP", "."), "lsearch-llama.log"), "w")
+                log = open(os.path.join(os.environ.get("TEMP", "."), "winspotlight-llama.log"), "w")
                 self.proc = subprocess.Popen(args, stdout=log, stderr=subprocess.STDOUT,
                                              creationflags=subprocess.CREATE_NO_WINDOW)
             deadline = time.time() + timeout
@@ -66,9 +70,10 @@ class LlamaServer:
                 if self._healthy():
                     return
                 if self.proc.poll() is not None:
-                    raise RuntimeError("llama-server exited while loading the model; see %TEMP%\\lsearch-llama.log")
+                    raise RuntimeError(t("llama-server exited while loading the model; see %TEMP%\\winspotlight-llama.log",
+                                         "llama-server se cerró al cargar el modelo; mira %TEMP%\\winspotlight-llama.log"))
                 time.sleep(0.5)
-            raise RuntimeError("Model took too long to load")
+            raise RuntimeError(t("Model took too long to load", "El modelo tardó demasiado en cargar"))
 
     def touch(self):
         self.last_used = time.time()

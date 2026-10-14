@@ -5,7 +5,7 @@ otherwise the model can reply with  <tool>{"name": ..., "args": {...}}</tool>  b
 fine-tunes trained without a tool-calling template).
 
 Safety: tools only touch files inside the target file's folder (the "workspace"); every write
-first saves  <file>.lsearch.bak ; shell commands are disabled unless agent.allow_commands is true.
+first saves  <file>.winspotlight.bak ; shell commands are disabled unless agent.allow_commands is true.
 """
 import difflib
 import json
@@ -14,6 +14,8 @@ import re
 import shutil
 import subprocess
 import urllib.request
+
+from .i18n import t
 
 MAX_STEPS = 16
 MAX_READ = 60_000
@@ -36,13 +38,13 @@ TOOLS = [
                                                      "approved": {"type": "boolean"}}, "required": ["summary"]}},
 ]
 
-FIXER_PROMPT = """You are the Fixer agent inside LSearch. Task from the user: {task}
+FIXER_PROMPT = """You are the Fixer agent inside WinSpotlight. Task from the user: {task}
 Target file: {target}
 Workspace (you may only touch files under it): {workspace}
 Read the file, find the cause, and make the smallest correct edit with replace_in_file.
 {commands}When done, call finish with a short summary of the change."""
 
-REVIEWER_PROMPT = """You are the Reviewer agent inside LSearch. The user asked: {task}
+REVIEWER_PROMPT = """You are the Reviewer agent inside WinSpotlight. The user asked: {task}
 The Fixer changed these files (unified diff below). Check the change is correct, minimal, and actually
 addresses the task. You may read files. Call finish with approved=true, or approved=false and a
 specific explanation of what is still wrong.
@@ -72,7 +74,7 @@ class Workspace:
         if full not in self.originals:
             self.originals[full] = open(full, encoding="utf-8", errors="replace").read() if os.path.exists(full) else ""
             if os.path.exists(full):
-                shutil.copy2(full, full + ".lsearch.bak")
+                shutil.copy2(full, full + ".winspotlight.bak")
 
     def call(self, name, args):
         if name == "read_file":
@@ -189,7 +191,7 @@ def run_task(cfg, task, target, emit):
         emit({"agent": "Fixer", "type": "summary", "text": result.get("summary", "")})
         diff = ws.diff()
         if not diff:
-            emit({"type": "done", "ok": False, "text": "No changes were made.", "diff": ""})
+            emit({"type": "done", "ok": False, "text": t("No changes were made.", "No se hizo ningún cambio."), "diff": ""})
             return
         review = run_agent(cfg, "Reviewer", REVIEWER_PROMPT.format(task=task, diff=diff[:20000]), ws, emit)
         emit({"agent": "Reviewer", "type": "summary", "text": review.get("summary", "")})
@@ -197,5 +199,6 @@ def run_task(cfg, task, target, emit):
             emit({"type": "done", "ok": True, "text": result.get("summary", ""), "diff": diff})
             return
         feedback = f"\n\nA reviewer rejected your previous attempt:\n{review.get('summary')}\nFix it."
-    emit({"type": "done", "ok": False, "text": "Reviewer still not satisfied; backups saved as .lsearch.bak.",
+    emit({"type": "done", "ok": False, "text": t("Reviewer still not satisfied; backups saved as .winspotlight.bak.",
+                                                "El revisor sigue sin aprobarlo; las copias quedaron como .winspotlight.bak."),
           "diff": ws.diff()})
