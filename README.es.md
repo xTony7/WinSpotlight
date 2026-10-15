@@ -2,6 +2,12 @@
 
 # WinSpotlight — Spotlight para Windows
 
+> [!WARNING]
+> **Problema de seguridad conocido — sin mantenimiento.** En esta versión el motor de búsqueda local
+> acepta peticiones de cualquier programa del PC, incluidas las páginas web abiertas en el navegador,
+> que podrían pedirle abrir archivos o programas. Este repositorio queda archivado en la versión 1.1.0
+> y no recibirá correcciones. Úsalo bajo tu propio riesgo, idealmente solo para estudiarlo.
+
 Un lanzador al estilo de Spotlight para Windows, con el aspecto de macOS. Pulsa **Alt+Espacio**
 para buscar aplicaciones, archivos, el contenido de tus documentos y el historial del navegador por
 su significado, no solo por el nombre. También puede arreglar archivos por ti con **LLA**, un

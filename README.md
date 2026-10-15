@@ -2,6 +2,12 @@
 
 # WinSpotlight — Spotlight for Windows
 
+> [!WARNING]
+> **Known security issue — not maintained.** In this version the local search backend accepts
+> requests from any program on the PC, including web pages open in a browser, which could ask it to
+> open files or programs. This repository is archived at version 1.1.0 and will not receive fixes.
+> Use it at your own risk, ideally only for study.
+
 A Spotlight-style launcher for Windows with the look of macOS. Press **Alt+Space** to search apps,
 files, document contents and browser history by meaning, not just by name. It can also fix files
 for you with **LLA**, a local mixture-of-experts model: type `fix app.py it crashes on start` and
